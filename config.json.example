@@ -5,5 +5,9 @@
   },
   "keyWordsFiles": {
   },
-  "token": "TOKEN_HERE"
+  "token": "TOKEN_HERE",
+  "guildId": GUILD_ID,
+  "specialChannel": CHANNEL_ID,
+  "specialChannelEmote": "EMOTE_NAME:EMOTE_ID",
+  "starboardChannel": CHANNEL_ID,
 }

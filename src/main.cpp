@@ -118,7 +118,8 @@ template <typename EventType> void createStarboardMessage( custom_cluster &bot, 
     m = bot.message_edit_sync( m );
   } else {
     // Post in starboard channel
-    const dpp::channel starboard_channel = bot.channel_get_sync( 1243918527006511234 );
+    const dpp::channel starboard_channel =
+        bot.channel_get_sync( bot.get_config().at( "starboardChannel" ).get<dpp::snowflake>() );
     starboard[ msg.get_url() ] =
         bot.message_create_sync( dpp::message( "⭐ **" + std::to_string( starCount ) + "** | [`# " + channel.name +
                                                "`](<" + msg.get_url() + ">)" )
@@ -204,7 +205,7 @@ int main() {
 
   // Bot ready event
   bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) {
-    dpp::snowflake guild_id = 1116464113305006192;
+    dpp::snowflake guild_id = bot.get_config().at( "guildId" ).get<dpp::snowflake>();
 
     // Delete all commands in the guild
     bot.guild_bulk_command_delete_sync( guild_id );
@@ -230,11 +231,11 @@ int main() {
     const dpp::message msg = event.msg;
     const dpp::channel channel = bot.channel_get_sync( event.msg.channel_id );
     json config = bot.get_config();
-    const std::vector<std::string> botChannels = config.at( "botChannels" );
+    const std::vector<dpp::snowflake> botChannels = config.at( "botChannels" );
 
     // Ignore messages from the bot itself and from channels that are not bot channels
     if ( author.id == bot.me.id ||
-         std::find( botChannels.begin(), botChannels.end(), channel.id.str() ) == botChannels.end() )
+         std::find( botChannels.begin(), botChannels.end(), channel.id ) == botChannels.end() )
       return;
 
     // Get the content of the message
@@ -248,8 +249,8 @@ int main() {
     const std::map<std::string, std::string> keyWordsFiles = config.at( "keyWordsFiles" );
 
     // React with an emoji to all attachments in the specified channel
-    if ( channel.id == 1129073802433802301 && !attachments.empty() ) {
-      bot.message_add_reaction( msg, std::string( "01_cum:1218632042204495973" ), logCallback );
+    if ( channel.id == config.at("specialChannel").get<dpp::snowflake>() && !attachments.empty() ) {
+      bot.message_add_reaction( msg, config.at("specialChannelEmote").get<std::string>(), logCallback );
     }
 
     // Check for custom keywords and reply with the corresponding response
@@ -318,9 +319,9 @@ int main() {
       if ( event.command.get_command_name() == command->get_name() ) {
 
         // Get channel ID and check if it's allowed
-        std::string channel_id = event.command.channel_id.str();
+        dpp::snowflake channel_id = event.command.channel_id;
         json config = bot.get_config();
-        std::vector<std::string> channel_ids = config.at( "botChannels" );
+        std::vector<dpp::snowflake> channel_ids = config.at( "botChannels" );
         if ( std::find( channel_ids.begin(), channel_ids.end(), channel_id ) != channel_ids.end() ) {
           // Execute the command if it's allowed
           command->execute( bot, event );
