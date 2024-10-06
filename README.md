@@ -1,4 +1,4 @@
-# discord-bot
+# brain-damage
 A discord bot written in C++ using the [dpp](https://github.com/brainboxdotcc/DPP) library.
 
 ## Building
@@ -66,10 +66,10 @@ public:
   std::string get_description() const override { return "Ping Pong!"; }
 
   // The options of the command
-  std::vector<dpp::command_option> get_options() const override { 
+  std::vector<dpp::command_option> get_options() const override {
     return {
       dpp::command_option(dpp::co_string, "example", "Example option", false),
-    }; 
+    };
   }
 
   // The permissions required to use the command
