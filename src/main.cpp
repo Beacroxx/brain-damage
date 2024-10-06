@@ -30,7 +30,7 @@ void signalHandler( int signal ) {
   exit( 0 );
 }
 
-template <typename EventType> void createStarboardMessage( custom_cluster &bot, const EventType &event ) {
+template <typename EventType> void updateStarboardMessage( custom_cluster &bot, const EventType &event ) {
   std::unique_lock<std::mutex> lock( bot.starboard_mutex, std::defer_lock );
 
   // If the mutex is already locked, wait for it to unlock
@@ -336,11 +336,11 @@ int main() {
 
   // Handle message reaction add
   bot.on_message_reaction_add(
-      [ &bot ]( const dpp::message_reaction_add_t &event ) { createStarboardMessage( bot, event ); } );
+      [ &bot ]( const dpp::message_reaction_add_t &event ) { updateStarboardMessage( bot, event ); } );
 
   // Handle message reaction remove
   bot.on_message_reaction_remove(
-      [ &bot ]( const dpp::message_reaction_remove_t &event ) { createStarboardMessage( bot, event ); } );
+      [ &bot ]( const dpp::message_reaction_remove_t &event ) { updateStarboardMessage( bot, event ); } );
 
   // Start bot
   bot.start( dpp::st_wait );
