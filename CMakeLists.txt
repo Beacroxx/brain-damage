@@ -27,31 +27,31 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 # Collect all .cpp files in the src/commands directory
-file(GLOB_RECURSE COG_SOURCES "src/commands/*/*.cpp")
+file(GLOB_RECURSE COMMAND_SOURCES "src/commands/*/*.cpp")
 
-# Iterate over each cog source file
-foreach(COG_SOURCE ${COG_SOURCES})
+# Iterate over each command source file
+foreach(COMMAND_SOURCE ${COMMAND_SOURCES})
 
   # Extract the command name (first wildcard) from the file path
-  get_filename_component(COG_NAME ${COG_SOURCE} DIRECTORY)
-  get_filename_component(COG_NAME ${COG_NAME} NAME)
+  get_filename_component(COMMAND_NAME ${COMMAND_SOURCE} DIRECTORY)
+  get_filename_component(COMMAND_NAME ${COMMAND_NAME} NAME)
 
   # Create a shared library for the command
-  add_library(${COG_NAME} SHARED ${COG_SOURCE})
+  add_library(${COMMAND_NAME} SHARED ${COMMAND_SOURCE})
 
   # Link the DPP libraries to the command library
-  target_link_libraries(${COG_NAME} ${DPP_LIBRARIES})
+  target_link_libraries(${COMMAND_NAME} ${DPP_LIBRARIES})
 
   # Include the DPP directories for the command library
-  target_include_directories(${COG_NAME} PRIVATE ${DPP_INCLUDE_DIR})
+  target_include_directories(${COMMAND_NAME} PRIVATE ${DPP_INCLUDE_DIR})
 
-  # Set the output directory for the command library to ./build/commands/<cog_name>
-  set_target_properties(${COG_NAME} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/commands/${COG_NAME}"
+  # Set the output directory for the command library to ./build/commands/<command_name>
+  set_target_properties(${COMMAND_NAME} PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/commands/${COMMAND_NAME}"
   )
 
-  # Set C++ version for the cog library
-  set_target_properties(${COG_NAME} PROPERTIES
+  # Set C++ version for the command library
+  set_target_properties(${COMMAND_NAME} PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
   )
