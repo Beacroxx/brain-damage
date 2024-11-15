@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -Wall -Wextra -Wpedantic "CMakeFiles/discord-bot.dir/src/main.cpp.o" -o discord-bot  /usr/lib/libdpp.so

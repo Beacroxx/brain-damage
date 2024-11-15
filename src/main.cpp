@@ -116,7 +116,7 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
     m.embeds.at( 0 ) = e;
     m.set_content( "⭐ **" + std::to_string( starCount ) + "** | [`# " + channel.name + "`](<" + msg.get_url() + ">)" );
     m = bot.message_edit_sync( m );
-  } else {
+  } else if (starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t>) { 
     // Post in starboard channel
     const dpp::channel starboard_channel =
         bot.channel_get_sync( bot.get_config().at( "starboardChannel" ).get<dpp::snowflake>() );
@@ -126,10 +126,10 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
                                      .add_embed( e )
                                      .set_channel_id( starboard_channel.id ) );
 
-    // Remove the message after one hour ( thread magic )
+    // Remove the message after 3 days ( thread magic )
     std::string url = msg.get_url();
     auto thread = std::make_shared<std::thread>( [ botPtr = &bot, url ]() {
-      std::this_thread::sleep_for( std::chrono::hours( 1 ) );
+      std::this_thread::sleep_for( std::chrono::hours( 24 * 3 ) );
       std::unique_lock<std::mutex> lock( botPtr->starboard_mutex, std::defer_lock );
       if ( !lock.try_lock() ) {
         std::cout << "Thread: Waiting for mutex..." << std::endl;
@@ -142,7 +142,6 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
       auto &starboard = botPtr->starboard;
       if ( starboard.find( url ) != starboard.end() &&
            botPtr->starboard_threads.find( url ) != botPtr->starboard_threads.end() ) {
-        botPtr->message_delete_sync( starboard[ url ].id, starboard[ url ].channel_id );
         starboard.erase( url );
       }
       botPtr->starboard_threads.erase( url );
@@ -223,6 +222,13 @@ int main() {
 
     // Create all slash commands in the guild
     bot.guild_bulk_command_create_sync( scommands, guild_id );
+
+    // set status
+    dpp::activity activity;
+    activity.type = dpp::activity_type::at_game;
+    activity.name = "with fire";
+
+    bot.set_presence(dpp::presence(dpp::presence_status::ps_online, activity));
   } );
 
   bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) {

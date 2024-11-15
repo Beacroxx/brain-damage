@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -O3 -Wall -Wextra -Wpedantic -shared -Wl,-soname,libreload.so -o commands/reload/libreload.so CMakeFiles/reload.dir/src/commands/reload/reload.cpp.o  /usr/lib/libdpp.so
