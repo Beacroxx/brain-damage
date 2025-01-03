@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/ping.dir/link.d"
   "CMakeFiles/ping.dir/src/commands/ping/ping.cpp.o"
   "CMakeFiles/ping.dir/src/commands/ping/ping.cpp.o.d"
   "commands/ping/libping.pdb"

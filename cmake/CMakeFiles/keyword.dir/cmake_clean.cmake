@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/keyword.dir/link.d"
   "CMakeFiles/keyword.dir/src/commands/keyword/keyword.cpp.o"
   "CMakeFiles/keyword.dir/src/commands/keyword/keyword.cpp.o.d"
   "commands/keyword/libkeyword.pdb"

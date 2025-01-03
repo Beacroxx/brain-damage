@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/reload.dir/link.d"
   "CMakeFiles/reload.dir/src/commands/reload/reload.cpp.o"
   "CMakeFiles/reload.dir/src/commands/reload/reload.cpp.o.d"
   "commands/reload/libreload.pdb"

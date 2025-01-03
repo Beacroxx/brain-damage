@@ -1,1 +1,1 @@
-/usr/bin/c++ -fPIC  -O3 -Wall -Wextra -Wpedantic -shared -Wl,-soname,libkeyword_file.so -o commands/keyword_file/libkeyword_file.so CMakeFiles/keyword_file.dir/src/commands/keyword_file/keyword_file.cpp.o  /usr/lib/libdpp.so
+/usr/bin/c++ -fPIC  -O3 -Wall -Wextra -Wpedantic -Wl,--dependency-file=CMakeFiles/keyword_file.dir/link.d -shared -Wl,-soname,libkeyword_file.so -o commands/keyword_file/libkeyword_file.so CMakeFiles/keyword_file.dir/src/commands/keyword_file/keyword_file.cpp.o  /usr/lib/libdpp.so

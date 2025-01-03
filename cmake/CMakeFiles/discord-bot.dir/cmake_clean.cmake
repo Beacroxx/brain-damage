@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/discord-bot.dir/link.d"
   "CMakeFiles/discord-bot.dir/src/main.cpp.o"
   "CMakeFiles/discord-bot.dir/src/main.cpp.o.d"
   "discord-bot"

@@ -173,7 +173,7 @@ CMakeFiles/discord-bot.dir/src/main.cpp.o: /home/bea/dpp-bot/src/main.cpp \
  /usr/include/c++/14.2.1/pstl/glue_algorithm_defs.h \
  /usr/include/c++/14.2.1/pstl/execution_defs.h \
  /usr/include/dpp/snowflake.h /usr/include/dpp/json_fwd.h \
- /usr/include/nlohmann/json_fwd.hpp /usr/include/c++/14.2.1/cstdint \
+ /usr/include/dpp/nlohmann/json_fwd.hpp /usr/include/c++/14.2.1/cstdint \
  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.1/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/stdint-uintn.h \
  /usr/include/bits/stdint-least.h /usr/include/c++/14.2.1/memory \
@@ -189,9 +189,8 @@ CMakeFiles/discord-bot.dir/src/main.cpp.o: /home/bea/dpp-bot/src/main.cpp \
  /usr/include/c++/14.2.1/bits/atomic_lockfree_defines.h \
  /usr/include/c++/14.2.1/backward/auto_ptr.h \
  /usr/include/c++/14.2.1/pstl/glue_memory_defs.h \
- /usr/include/nlohmann/detail/abi_macros.hpp /usr/include/dpp/misc-enum.h \
- /usr/include/dpp/stringops.h /usr/include/c++/14.2.1/iomanip \
- /usr/include/c++/14.2.1/locale \
+ /usr/include/dpp/misc-enum.h /usr/include/dpp/stringops.h \
+ /usr/include/c++/14.2.1/iomanip /usr/include/c++/14.2.1/locale \
  /usr/include/c++/14.2.1/bits/locale_facets_nonio.h \
  /usr/include/c++/14.2.1/x86_64-pc-linux-gnu/bits/time_members.h \
  /usr/include/c++/14.2.1/x86_64-pc-linux-gnu/bits/messages_members.h \
@@ -204,13 +203,14 @@ CMakeFiles/discord-bot.dir/src/main.cpp.o: /home/bea/dpp-bot/src/main.cpp \
  /usr/include/dpp/utility.h /usr/include/c++/14.2.1/variant \
  /usr/include/c++/14.2.1/bits/parse_numbers.h \
  /usr/include/dpp/voicestate.h /usr/include/dpp/json_interface.h \
- /usr/include/dpp/permissions.h /usr/include/dpp/json.h \
- /usr/include/nlohmann/json.hpp /usr/include/c++/14.2.1/iterator \
+ /usr/include/dpp/json.h /usr/include/dpp/nlohmann/json.hpp \
+ /usr/include/c++/14.2.1/iterator \
  /usr/include/c++/14.2.1/bits/stream_iterator.h \
+ /usr/include/c++/14.2.1/numeric \
+ /usr/include/c++/14.2.1/bits/stl_numeric.h \
+ /usr/include/c++/14.2.1/pstl/glue_numeric_defs.h \
  /usr/include/c++/14.2.1/utility \
  /usr/include/c++/14.2.1/bits/stl_relops.h \
- /usr/include/nlohmann/adl_serializer.hpp \
- /usr/include/nlohmann/detail/conversions/from_json.hpp \
  /usr/include/c++/14.2.1/forward_list \
  /usr/include/c++/14.2.1/bits/forward_list.h \
  /usr/include/c++/14.2.1/bits/forward_list.tcc \
@@ -243,59 +243,16 @@ CMakeFiles/discord-bot.dir/src/main.cpp.o: /home/bea/dpp-bot/src/main.cpp \
  /usr/include/c++/14.2.1/bits/gslice_array.h \
  /usr/include/c++/14.2.1/bits/mask_array.h \
  /usr/include/c++/14.2.1/bits/indirect_array.h \
- /usr/include/nlohmann/detail/exceptions.hpp \
- /usr/include/nlohmann/detail/value_t.hpp \
- /usr/include/nlohmann/detail/macro_scope.hpp \
- /usr/include/nlohmann/detail/meta/detected.hpp \
- /usr/include/nlohmann/detail/meta/void_t.hpp \
- /usr/include/nlohmann/thirdparty/hedley/hedley.hpp \
  /usr/include/c++/14.2.1/version /usr/include/c++/14.2.1/cassert \
- /usr/include/assert.h /usr/include/nlohmann/detail/string_escape.hpp \
- /usr/include/nlohmann/detail/input/position_t.hpp \
- /usr/include/nlohmann/detail/meta/cpp_future.hpp \
- /usr/include/nlohmann/detail/meta/type_traits.hpp \
- /usr/include/nlohmann/detail/iterators/iterator_traits.hpp \
- /usr/include/nlohmann/detail/meta/call_std/begin.hpp \
- /usr/include/nlohmann/detail/meta/call_std/end.hpp \
- /usr/include/nlohmann/json_fwd.hpp \
- /usr/include/nlohmann/detail/string_concat.hpp \
- /usr/include/c++/14.2.1/cstring /usr/include/string.h \
- /usr/include/strings.h \
- /usr/include/nlohmann/detail/meta/identity_tag.hpp \
- /usr/include/nlohmann/detail/meta/std_fs.hpp \
+ /usr/include/assert.h /usr/include/c++/14.2.1/cstring \
+ /usr/include/string.h /usr/include/strings.h \
  /usr/include/c++/14.2.1/filesystem /usr/include/c++/14.2.1/bits/fs_fwd.h \
  /usr/include/c++/14.2.1/bits/chrono.h /usr/include/c++/14.2.1/ratio \
  /usr/include/c++/14.2.1/bits/fs_path.h /usr/include/c++/14.2.1/codecvt \
  /usr/include/c++/14.2.1/bits/fs_dir.h \
- /usr/include/c++/14.2.1/bits/fs_ops.h \
- /usr/include/nlohmann/detail/conversions/to_json.hpp \
- /usr/include/nlohmann/detail/iterators/iteration_proxy.hpp \
- /usr/include/nlohmann/byte_container_with_subtype.hpp \
- /usr/include/nlohmann/detail/hash.hpp \
- /usr/include/nlohmann/detail/input/binary_reader.hpp \
- /usr/include/nlohmann/detail/input/input_adapters.hpp \
- /usr/include/c++/14.2.1/numeric \
- /usr/include/c++/14.2.1/bits/stl_numeric.h \
- /usr/include/c++/14.2.1/pstl/glue_numeric_defs.h \
- /usr/include/nlohmann/detail/input/json_sax.hpp \
- /usr/include/nlohmann/detail/input/lexer.hpp \
- /usr/include/nlohmann/detail/meta/is_sax.hpp \
- /usr/include/nlohmann/detail/input/parser.hpp \
- /usr/include/nlohmann/detail/iterators/internal_iterator.hpp \
- /usr/include/nlohmann/detail/iterators/primitive_iterator.hpp \
- /usr/include/nlohmann/detail/iterators/iter_impl.hpp \
- /usr/include/nlohmann/detail/iterators/json_reverse_iterator.hpp \
- /usr/include/nlohmann/detail/json_custom_base_class.hpp \
- /usr/include/nlohmann/detail/json_pointer.hpp \
- /usr/include/nlohmann/detail/json_ref.hpp \
- /usr/include/nlohmann/detail/output/binary_writer.hpp \
- /usr/include/nlohmann/detail/output/output_adapters.hpp \
- /usr/include/nlohmann/detail/output/serializer.hpp \
- /usr/include/nlohmann/detail/conversions/to_chars.hpp \
- /usr/include/nlohmann/ordered_map.hpp /usr/include/c++/14.2.1/any \
- /usr/include/nlohmann/detail/macro_unscope.hpp \
- /usr/include/nlohmann/thirdparty/hedley/hedley_undef.hpp \
- /usr/include/dpp/role.h /usr/include/dpp/guild.h /usr/include/dpp/user.h \
+ /usr/include/c++/14.2.1/bits/fs_ops.h /usr/include/c++/14.2.1/any \
+ /usr/include/dpp/permissions.h /usr/include/dpp/role.h \
+ /usr/include/dpp/guild.h /usr/include/dpp/user.h \
  /usr/include/dpp/emoji.h /usr/include/dpp/channel.h \
  /usr/include/dpp/thread.h /usr/include/dpp/message.h \
  /usr/include/dpp/queues.h /usr/include/c++/14.2.1/queue \
@@ -308,22 +265,32 @@ CMakeFiles/discord-bot.dir/src/main.cpp.o: /home/bea/dpp-bot/src/main.cpp \
  /usr/include/c++/14.2.1/bits/std_mutex.h \
  /usr/include/c++/14.2.1/condition_variable \
  /usr/include/c++/14.2.1/bits/unique_lock.h \
- /usr/include/c++/14.2.1/optional /usr/include/dpp/invite.h \
- /usr/include/dpp/stage_instance.h /usr/include/dpp/dtemplate.h \
- /usr/include/dpp/ban.h /usr/include/dpp/prune.h \
- /usr/include/dpp/voiceregion.h /usr/include/dpp/integration.h \
- /usr/include/dpp/webhook.h /usr/include/dpp/presence.h \
- /usr/include/dpp/intents.h /usr/include/dpp/appcommand.h \
- /usr/include/dpp/entitlement.h /usr/include/dpp/auditlog.h \
- /usr/include/dpp/application.h /usr/include/dpp/scheduled_event.h \
- /usr/include/dpp/discordclient.h /usr/include/dpp/wsclient.h \
- /usr/include/dpp/sslclient.h /usr/include/dpp/socket.h \
- /usr/include/dpp/dispatcher.h /usr/include/dpp/automod.h \
- /usr/include/dpp/event.h /usr/include/c++/14.2.1/mutex \
- /usr/include/dpp/cluster.h /usr/include/dpp/timer.h \
- /usr/include/dpp/discordvoiceclient.h /usr/include/fcntl.h \
- /usr/include/bits/fcntl.h /usr/include/bits/fcntl-linux.h \
- /usr/include/bits/types/struct_iovec.h /usr/include/linux/falloc.h \
+ /usr/include/c++/14.2.1/atomic /usr/include/c++/14.2.1/optional \
+ /usr/include/dpp/invite.h /usr/include/dpp/stage_instance.h \
+ /usr/include/dpp/dtemplate.h /usr/include/dpp/ban.h \
+ /usr/include/dpp/prune.h /usr/include/dpp/voiceregion.h \
+ /usr/include/dpp/integration.h /usr/include/dpp/webhook.h \
+ /usr/include/dpp/presence.h /usr/include/dpp/intents.h \
+ /usr/include/dpp/appcommand.h /usr/include/dpp/entitlement.h \
+ /usr/include/dpp/auditlog.h /usr/include/dpp/application.h \
+ /usr/include/dpp/scheduled_event.h /usr/include/dpp/discordclient.h \
+ /usr/include/dpp/wsclient.h /usr/include/dpp/sslclient.h \
+ /usr/include/dpp/socket.h /usr/include/netinet/in.h \
+ /usr/include/sys/socket.h /usr/include/bits/types/struct_iovec.h \
+ /usr/include/bits/socket.h /usr/include/bits/socket_type.h \
+ /usr/include/bits/sockaddr.h /usr/include/asm/socket.h \
+ /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+ /usr/include/linux/stddef.h /usr/include/asm/posix_types.h \
+ /usr/include/asm/posix_types_64.h /usr/include/asm-generic/posix_types.h \
+ /usr/include/asm/bitsperlong.h /usr/include/asm-generic/bitsperlong.h \
+ /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+ /usr/include/bits/types/struct_osockaddr.h /usr/include/bits/in.h \
+ /usr/include/arpa/inet.h /usr/include/dpp/dispatcher.h \
+ /usr/include/dpp/automod.h /usr/include/dpp/event.h \
+ /usr/include/c++/14.2.1/mutex /usr/include/dpp/cluster.h \
+ /usr/include/dpp/timer.h /usr/include/dpp/discordvoiceclient.h \
+ /usr/include/fcntl.h /usr/include/bits/fcntl.h \
+ /usr/include/bits/fcntl-linux.h /usr/include/linux/falloc.h \
  /usr/include/bits/stat.h /usr/include/bits/struct_stat.h \
  /usr/include/c++/14.2.1/csignal /usr/include/signal.h \
  /usr/include/bits/signum-generic.h /usr/include/bits/signum-arch.h \
@@ -344,16 +311,18 @@ CMakeFiles/discord-bot.dir/src/main.cpp.o: /home/bea/dpp-bot/src/main.cpp \
  /usr/include/bits/signal_ext.h /usr/include/dpp/discordevents.h \
  /usr/include/c++/14.2.1/future \
  /usr/include/c++/14.2.1/bits/atomic_futex.h \
- /usr/include/c++/14.2.1/atomic /usr/include/c++/14.2.1/chrono \
- /usr/include/dpp/cache.h /usr/include/dpp/sync.h \
- /usr/include/dpp/restresults.h /usr/include/dpp/sku.h \
- /usr/include/dpp/event_router.h /usr/include/dpp/coro/job.h \
- /usr/include/dpp/coro/task.h /usr/include/dpp/coro/async.h \
+ /usr/include/c++/14.2.1/chrono /usr/include/c++/14.2.1/set \
+ /usr/include/c++/14.2.1/bits/stl_set.h \
+ /usr/include/c++/14.2.1/bits/stl_multiset.h /usr/include/dpp/cache.h \
+ /usr/include/dpp/sync.h /usr/include/dpp/restresults.h \
+ /usr/include/dpp/sku.h /usr/include/dpp/event_router.h \
+ /usr/include/dpp/coro/job.h /usr/include/dpp/coro/task.h \
+ /usr/include/dpp/coro/awaitable.h /usr/include/dpp/coro/async.h \
  /usr/include/dpp/cluster_sync_calls.h /usr/include/dpp/httpsclient.h \
  /usr/include/c++/14.2.1/list /usr/include/c++/14.2.1/bits/stl_list.h \
  /usr/include/c++/14.2.1/bits/list.tcc /usr/include/dpp/commandhandler.h \
  /usr/include/dpp/once.h /usr/include/dpp/colors.h \
  /usr/include/dpp/timed_listener.h /usr/include/dpp/collector.h \
- /usr/include/nlohmann/json.hpp \
+ /usr/include/dpp/bignum.h /usr/include/nlohmann/json.hpp \
  /home/bea/dpp-bot/src/commands/command.hpp /usr/include/dlfcn.h \
  /usr/include/bits/dlfcn.h /usr/include/bits/dl_find_object.h

@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/bea/dpp-bot/src/commands/ping/ping.cpp" "CMakeFiles/ping.dir/src/commands/ping/ping.cpp.o" "gcc" "CMakeFiles/ping.dir/src/commands/ping/ping.cpp.o.d"
+  "" "commands/ping/libping.so" "gcc" "CMakeFiles/ping.dir/link.d"
   )
 
 # Targets to which this target links which contain Fortran sources.
