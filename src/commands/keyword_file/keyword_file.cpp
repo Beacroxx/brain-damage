@@ -15,8 +15,8 @@ public:
 
     int ret = system(("curl -L '" + response.url + "' -o ../media/" + response.filename).c_str());
 
-    if (ret != -1) {
-      event.edit_response("Failed to download file! " + std::to_string(ret));
+    if (ret != 0) {
+      event.edit_response("Failed to download file! Return Code: " + std::to_string(ret));
       return;
     }
 
