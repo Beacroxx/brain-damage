@@ -250,15 +250,56 @@ int main() {
     if ( std::regex_search( event.msg.content, match, regex ) ) {
       std::string url = event.msg.content.substr( match.position(), match.length() );
 
-      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 8M " + url +
-                            " -o \"../media/output.mp4\"";
-      system( command.c_str() ); // Download the video
+      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 10M -f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " + url +
+                            " -o \"../media//ytdlp/output.webm\"";
+      char buffer[128];
+      std::string result = "";
+      FILE *pipe = popen( simcommand.c_str(), "r" );
+      if ( !pipe ) {
+        return;
+      }
+      while ( !feof( pipe ) ) {
+        if ( fgets( buffer, 128, pipe ) != NULL ) {
+          result += buffer;
+        }
+      }
+      pclose( pipe );
+      if (result.empty()) {
+        // did not match filter or max filesize
+        std ::cout << "did not match filter or max filesize" << std::endl;
+        return;
+      }
+      // Start typing indicator thread
+      std::atomic<bool> typing_indicator_running(true);
+      std::thread typing_indicator_thread([&bot, &channel, &typing_indicator_running]() {
+        while (typing_indicator_running) {
+          bot.channel_typing(channel);
+          std::this_thread::sleep_for(std::chrono::seconds(2));
+        }
+      });
+
+      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 10M -f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\" --recode webm " + url +
+                " -o \"../media//ytdlp/output.webm\"";
+      system(command.c_str()); // Download the video
+
+      // find the file
+      std::string path;
+      for (const auto &entry : fs::directory_iterator("../media/ytdlp/")) {
+        if (entry.is_regular_file() && entry.path().filename().string().find("output") != std::string::npos) {
+          path = entry.path().string();
+          break;
+        }
+      }
+
+      if (path.empty()) {
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        return;
+      }
 
       // Reply with the file
-      std::ifstream f( "../media/output.mp4" );
-      if ( f ) {
-        // typing indicator coroutine
-        bot.channel_typing( channel );
+      std::ifstream f(path);
+      if (f) {
 
         // Read the file size
         f.seekg( 0, std::ios::end );
@@ -270,13 +311,20 @@ int main() {
         if ( f.read( buffer.data(), length ) ) {
           std::string fileContent( buffer.begin(), buffer.end() );
 
-          event.reply( dpp::message().add_file( "output.mp4", fileContent ), true, logCallback );
+            event.reply( dpp::message().add_file( path, fileContent, "video" ), true, logCallback );
           f.close();
         }
       }
 
-      // remove the file
-      std::remove( "../media/output.mp4" );
+      typing_indicator_running = false;
+      typing_indicator_thread.join();
+
+      // remove all files in the directory ytdlp
+      for ( const auto &entry : fs::directory_iterator( "../media/ytdlp/" ) ) {
+        if ( entry.is_regular_file() ) {
+          fs::remove( entry.path() );
+        }
+      }
     }
 
     // Ignore messages from the bot itself and from channels that are not bot channels
