@@ -309,6 +309,9 @@ int main() {
       if ( content.find( keyWordFile.first ) != std::string::npos ) {
         std::ifstream f( "../media/" + keyWordFile.second );
         if ( f ) {
+          // typing indicator coroutine
+          bot.channel_typing( channel );
+
           // Read the file size
           f.seekg( 0, std::ios::end );
           std::streamsize length = f.tellg();
