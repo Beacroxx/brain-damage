@@ -10,6 +10,7 @@
 #include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -116,7 +117,7 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
     m.embeds.at( 0 ) = e;
     m.set_content( "⭐ **" + std::to_string( starCount ) + "** | [`# " + channel.name + "`](<" + msg.get_url() + ">)" );
     m = bot.message_edit_sync( m );
-  } else if (starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t>) { 
+  } else if ( starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t> ) {
     // Post in starboard channel
     const dpp::channel starboard_channel =
         bot.channel_get_sync( bot.get_config().at( "starboardChannel" ).get<dpp::snowflake>() );
@@ -228,7 +229,7 @@ int main() {
     activity.type = dpp::activity_type::at_game;
     activity.name = "with fire";
 
-    bot.set_presence(dpp::presence(dpp::presence_status::ps_online, activity));
+    bot.set_presence( dpp::presence( dpp::presence_status::ps_online, activity ) );
   } );
 
   bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) {
@@ -238,6 +239,43 @@ int main() {
     const dpp::channel channel = bot.channel_get_sync( event.msg.channel_id );
     json config = bot.get_config();
     const std::vector<dpp::snowflake> botChannels = config.at( "botChannels" );
+
+    // DPP regex downloading
+    auto regex = std::regex(
+        R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|twitch\.tv|tiktok\.com|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?\b)",
+        std::regex::icase );
+    std::smatch match;
+    if ( std::regex_search( event.msg.content, match, regex ) ) {
+      std::string url = event.msg.content.substr( match.position(), match.length() );
+
+      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 8M " + url +
+                            " -o \"../media/output.mp4\"";
+      system( command.c_str() ); // Download the video
+
+      // Reply with the file
+      std::ifstream f( "../media/output.mp4" );
+      if ( f ) {
+        // typing indicator coroutine
+        bot.channel_typing( channel );
+
+        // Read the file size
+        f.seekg( 0, std::ios::end );
+        std::streamsize length = f.tellg();
+        f.seekg( 0, std::ios::beg );
+
+        // Read the file content
+        std::vector<char> buffer( length );
+        if ( f.read( buffer.data(), length ) ) {
+          std::string fileContent( buffer.begin(), buffer.end() );
+
+          event.reply( dpp::message().add_file( "output.mp4", fileContent ), true, logCallback );
+          f.close();
+        }
+      }
+
+      // remove the file
+      std::remove( "../media/output.mp4" );
+    }
 
     // Ignore messages from the bot itself and from channels that are not bot channels
     if ( author.id == bot.me.id ||
@@ -255,8 +293,8 @@ int main() {
     const std::map<std::string, std::string> keyWordsFiles = config.at( "keyWordsFiles" );
 
     // React with an emoji to all attachments in the specified channel
-    if ( channel.id == config.at("specialChannel").get<dpp::snowflake>() && !attachments.empty() ) {
-      bot.message_add_reaction( msg, config.at("specialChannelEmote").get<std::string>(), logCallback );
+    if ( channel.id == config.at( "specialChannel" ).get<dpp::snowflake>() && !attachments.empty() ) {
+      bot.message_add_reaction( msg, config.at( "specialChannelEmote" ).get<std::string>(), logCallback );
     }
 
     // Check for custom keywords and reply with the corresponding response
