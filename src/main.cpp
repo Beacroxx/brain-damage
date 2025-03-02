@@ -250,8 +250,8 @@ int main() {
     if ( std::regex_search( event.msg.content, match, regex ) ) {
       std::string url = event.msg.content.substr( match.position(), match.length() );
 
-      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 10M -f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " + url +
-                            " -o \"../media//ytdlp/output.webm\"";
+      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 8M -f \"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " + url +
+                            " -o \"../media//ytdlp/output.mp4\"";
       char buffer[128];
       std::string result = "";
       FILE *pipe = popen( simcommand.c_str(), "r" );
@@ -278,8 +278,8 @@ int main() {
         }
       });
 
-      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 10M -f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\" --recode webm " + url +
-                " -o \"../media//ytdlp/output.webm\"";
+      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 8M -f \"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " + url +
+                " -o \"../media//ytdlp/output.%(ext)s\"";
       system(command.c_str()); // Download the video
 
       // find the file
