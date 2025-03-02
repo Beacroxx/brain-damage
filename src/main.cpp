@@ -242,8 +242,10 @@ int main() {
 
     // DPP regex downloading
     auto regex = std::regex(
-        R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|twitch\.tv|tiktok\.com|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?\b)",
-        std::regex::icase );
+      R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|twitch\.tv|tiktok\.com|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/|clip\/)?)([\w\-]+)(\S+)?\b)",
+      std::regex::icase
+    );
+  
     std::smatch match;
     if ( std::regex_search( event.msg.content, match, regex ) ) {
       std::string url = event.msg.content.substr( match.position(), match.length() );
