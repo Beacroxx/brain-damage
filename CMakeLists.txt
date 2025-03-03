@@ -28,14 +28,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 # Collect all .cpp files in the src/commands directory
-file(GLOB_RECURSE COMMAND_SOURCES "src/commands/*/*.cpp")
+file(GLOB COMMAND_SOURCES "src/commands/*.cpp")
 
 # Iterate over each command source file
 foreach(COMMAND_SOURCE ${COMMAND_SOURCES})
 
-  # Extract the command name (first wildcard) from the file path
-  get_filename_component(COMMAND_NAME ${COMMAND_SOURCE} DIRECTORY)
-  get_filename_component(COMMAND_NAME ${COMMAND_NAME} NAME)
+  # Extract the command name from the file name
+  get_filename_component(COMMAND_NAME ${COMMAND_SOURCE} NAME_WE)
 
   # Create a shared library for the command
   add_library(${COMMAND_NAME} SHARED ${COMMAND_SOURCE})
@@ -46,14 +45,14 @@ foreach(COMMAND_SOURCE ${COMMAND_SOURCES})
   # Include the DPP directories for the command library
   target_include_directories(${COMMAND_NAME} PRIVATE ${DPP_INCLUDE_DIR})
 
-  # Set the output directory for the command library to ./build/commands/<command_name>
+  # Set the output directory for the command library to ./build/commands
   set_target_properties(${COMMAND_NAME} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/commands/${COMMAND_NAME}"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/commands"
   )
 
   # Set C++ version for the command library
   set_target_properties(${COMMAND_NAME} PROPERTIES
-    CXX_STANDARD 17
+    CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
   )
 endforeach()

@@ -1,7 +1,7 @@
 #include "main.hpp"
-#include "starboard.hpp"
 
 #include "commands/command.hpp"
+#include "starboard.hpp"
 
 #include <concepts>
 #include <csignal>
@@ -32,6 +32,13 @@ void signalHandler( int signal ) {
   exit( 0 );
 }
 
+void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake channelid, int seconds ) {
+  std::thread( [ &bot, msgid, channelid, seconds ]() {
+    std::this_thread::sleep_for( std::chrono::seconds( seconds ) );
+    bot.message_delete( msgid, channelid, logCallback );
+  } ).detach();
+}
+
 int main() {
   // Initialize signal handler
   std::signal( SIGINT, signalHandler );
@@ -53,30 +60,25 @@ int main() {
 
   // Initialize commands
   std::vector<std::unique_ptr<Command>> commands;
-
-  // Iterate over all subdirectories in build/commands/
-  for ( const auto &entry : fs::directory_iterator( "./commands/" ) ) {
-    if ( entry.is_directory() ) {
-      // Iterate over .so files within each subdirectory
-      for ( const auto &file : fs::directory_iterator( entry.path() ) ) {
-        if ( file.is_regular_file() && file.path().extension() == ".so" ) {
-          // Load the .so file
-          void *lib_handle = dlopen( file.path().c_str(), RTLD_LAZY );
-          if ( lib_handle ) {
-            typedef Command *( *create_command_func )();
-            // Assume the function name is "create_<cmd_name>_command"
-            std::string command_name = entry.path().filename().string();
-            std::string func_name = "create_" + command_name + "_command";
-            create_command_func create_command = (create_command_func)dlsym( lib_handle, func_name.c_str() );
-            if ( create_command ) {
-              commands.push_back( std::unique_ptr<Command>( create_command() ) );
-            } else {
-              std::cerr << "Error loading command from library: " << dlerror() << std::endl;
-            }
-          } else {
-            std::cerr << "Error opening library: " << dlerror() << std::endl;
-          }
+  // Iterate over all .so files in the commands/ directory
+  for ( const auto &file : fs::directory_iterator( "./commands/" ) ) {
+    if ( file.is_regular_file() && file.path().extension() == ".so" ) {
+      // Load the .so file
+      void *lib_handle = dlopen( file.path().c_str(), RTLD_LAZY );
+      if ( lib_handle ) {
+        typedef Command *( *create_command_func )();
+        // Assume the function name is "create_<cmd_name>_command"
+        std::string command_name = file.path().stem().string();
+        std::string func_name = "create_" + command_name + "_command";
+        func_name.erase( 7, 3 );
+        create_command_func create_command = (create_command_func)dlsym( lib_handle, func_name.c_str() );
+        if ( create_command ) {
+          commands.push_back( std::unique_ptr<Command>( create_command() ) );
+        } else {
+          std::cerr << "Error loading command from library: " << dlerror() << std::endl;
         }
+      } else {
+        std::cerr << "Error opening library: " << dlerror() << std::endl;
       }
     }
   }
@@ -130,28 +132,7 @@ int main() {
 
     std::smatch match;
     if ( std::regex_search( event.msg.content, match, regex ) ) {
-      std::string url = event.msg.content.substr( match.position(), match.length() );
 
-      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 8M -f "
-                               "\"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " +
-                               url + " -o \"../media//ytdlp/output.mp4\"";
-      char buffer[ 128 ];
-      std::string result = "";
-      FILE *pipe = popen( simcommand.c_str(), "r" );
-      if ( !pipe ) {
-        co_return;
-      }
-      while ( !feof( pipe ) ) {
-        if ( fgets( buffer, 128, pipe ) != NULL ) {
-          result += buffer;
-        }
-      }
-      pclose( pipe );
-      if ( result.empty() ) {
-        // did not match filter or max filesize
-        std ::cout << "did not match filter or max filesize" << std::endl;
-        co_return;
-      }
       // Start typing indicator thread
       std::atomic<bool> typing_indicator_running( true );
       std::thread typing_indicator_thread( [ &bot, &channel, &typing_indicator_running ]() {
@@ -161,10 +142,67 @@ int main() {
         }
       } );
 
+      std::string url = event.msg.content.substr( match.position(), match.length() );
+
+      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 8M -f "
+                               "\"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " +
+                               url + " -o \"../media//ytdlp/output.mp4\" 2>&1";
+      char buffer[ 2048 ];
+      std::string result = "";
+      FILE *pipe = popen( simcommand.c_str(), "r" );
+      if ( !pipe ) {
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        co_return;
+      }
+      while ( !feof( pipe ) ) {
+        if ( fgets( buffer, 2048, pipe ) != NULL ) {
+          result += buffer;
+        }
+      }
+      pclose( pipe );
+      
+      if ( result.find( "skipping" ) != std::string::npos ) {
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        auto msg = dpp::message( "The video is too long or too large." ).set_channel_id( event.msg.channel_id );
+        bot.message_create( msg, [ &bot ]( const dpp::confirmation_callback_t &callback ) {
+          if ( !callback.is_error() ) {
+            const dpp::message &created_msg = std::get<dpp::message>( callback.value );
+            deleteAfterAsync( bot, created_msg.id, created_msg.channel_id, 10 );
+          }
+        } );
+        co_return;
+      }
+
+      if ( result.find( "ERROR:" ) != std::string::npos ) {
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        auto msg = dpp::message( "Couldn't download the video. Make sure the link is valid and contains a video" ).set_channel_id( event.msg.channel_id );
+        bot.message_create( msg, [ &bot ]( const dpp::confirmation_callback_t &callback ) {
+          if ( !callback.is_error() ) {
+            const dpp::message &created_msg = std::get<dpp::message>( callback.value );
+            deleteAfterAsync( bot, created_msg.id, created_msg.channel_id, 10 );
+          }
+        } );
+        co_return;
+      }
+
       std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 8M -f "
                             "\"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " +
                             url + " -o \"../media//ytdlp/output.%(ext)s\"";
-      system( command.c_str() ); // Download the video
+      pipe = popen( command.c_str(), "r" );
+      if ( !pipe ) {
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        co_return;
+      }
+      while ( !feof( pipe ) ) {
+        if ( fgets( buffer, 2048, pipe ) != NULL ) {
+          result += buffer;
+        }
+      }
+      pclose( pipe );
 
       // find the file
       std::string path;
@@ -178,6 +216,14 @@ int main() {
       if ( path.empty() ) {
         typing_indicator_running = false;
         typing_indicator_thread.join();
+
+        auto msg = dpp::message( "The video dissapeared :)" ).set_channel_id( event.msg.channel_id );
+        bot.message_create( msg, [ &bot ]( const dpp::confirmation_callback_t &callback ) {
+          if ( !callback.is_error() ) {
+            const dpp::message &created_msg = std::get<dpp::message>( callback.value );
+            deleteAfterAsync( bot, created_msg.id, created_msg.channel_id, 10 );
+          }
+        } );
         co_return;
       }
 
@@ -195,7 +241,17 @@ int main() {
         if ( f.read( buffer.data(), length ) ) {
           std::string fileContent( buffer.begin(), buffer.end() );
 
-          event.reply( dpp::message().add_file( path, fileContent, "video" ), true, logCallback );
+          try {
+            event.reply( dpp::message().add_file( path, fileContent, "video" ), true, logCallback );
+          } catch ( const std::exception &e ) {
+            auto msg = dpp::message( "Video too fat" ).set_channel_id( event.msg.channel_id );
+            bot.message_create( msg, [ &bot ]( const dpp::confirmation_callback_t &callback ) {
+              if ( !callback.is_error() ) {
+                const dpp::message &created_msg = std::get<dpp::message>( callback.value );
+                deleteAfterAsync( bot, created_msg.id, created_msg.channel_id, 10 );
+              }
+            } );
+          }
           f.close();
         }
       }
@@ -318,12 +374,14 @@ int main() {
   } );
 
   // Handle message reaction add
-  bot.on_message_reaction_add(
-      [ &bot ]( const dpp::message_reaction_add_t &event ) -> dpp::task<void> { co_await updateStarboardMessage( bot, event ); } );
+  bot.on_message_reaction_add( [ &bot ]( const dpp::message_reaction_add_t &event ) -> dpp::task<void> {
+    co_await updateStarboardMessage( bot, event );
+  } );
 
   // Handle message reaction remove
-  bot.on_message_reaction_remove(
-      [ &bot ]( const dpp::message_reaction_remove_t &event ) -> dpp::task<void> { co_await updateStarboardMessage( bot, event ); } );
+  bot.on_message_reaction_remove( [ &bot ]( const dpp::message_reaction_remove_t &event ) -> dpp::task<void> {
+    co_await updateStarboardMessage( bot, event );
+  } );
 
   // Start bot
   bot.start( dpp::st_wait );

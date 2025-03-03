@@ -1,5 +1,5 @@
-#include "../command.hpp"
-#include "../../main.hpp"
+#include "../main.hpp"
+#include "command.hpp"
 
 using json = nlohmann::json;
 
