@@ -4,6 +4,8 @@
 class PingCommand : public Command {
 public:
   void execute(custom_cluster &bot, const dpp::slashcommand_t &event) override {
+    (void)bot; // Unused
+
     // Get the timestamp of the message
     const long timestamp = event.command.get_creation_time() * 1000; // Convert to milliseconds
 

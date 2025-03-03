@@ -10,7 +10,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -Wpedantic")
 
 # Create an executable
-add_executable(${PROJECT_NAME} "src/main.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(DPP REQUIRED)
 
