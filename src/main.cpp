@@ -31,7 +31,7 @@ void signalHandler( int signal ) {
   exit( 0 );
 }
 
-template <typename EventType> void updateStarboardMessage( custom_cluster &bot, const EventType &event ) {
+template <typename EventType> dpp::task<void> updateStarboardMessage( custom_cluster &bot, const EventType &event ) {
   std::unique_lock<std::mutex> lock( bot.starboard_mutex, std::defer_lock );
 
   // If the mutex is already locked, wait for it to unlock
@@ -45,11 +45,13 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
   }
 
   // Get the message, channel, and star count
-  const dpp::message msg = bot.message_get_sync( event.message_id, event.channel_id );
+  auto msg_result = co_await bot.co_message_get( event.message_id, event.channel_id );
+  const dpp::message msg = std::get<dpp::message>( msg_result.value );
   const auto starCountIt = std::find_if( msg.reactions.begin(), msg.reactions.end(),
                                          []( const dpp::reaction &r ) { return r.emoji_name == "⭐"; } );
   const int starCount = starCountIt != msg.reactions.end() ? starCountIt->count : 0;
-  const dpp::channel channel = bot.channel_get_sync( event.channel_id );
+  auto channel_result = co_await bot.co_channel_get( event.channel_id );
+  const dpp::channel channel = std::get<dpp::channel>( channel_result.value );
   const long timestamp = msg.get_creation_time();
 
   // Check if the message is already in the starboard
@@ -59,14 +61,14 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
   // If the message has less than 2 stars and a reaction has been removed, remove it from the starboard
   if ( starCount < 2 ) {
     if ( starboarded && std::is_same_v<EventType, dpp::message_reaction_remove_t> ) {
-      bot.message_delete_sync( starboard[ msg.get_url() ].id, starboard[ msg.get_url() ].channel_id );
+      co_await bot.co_message_delete( starboard[ msg.get_url() ].id, starboard[ msg.get_url() ].channel_id );
       starboard.erase( msg.get_url() );
       auto thread_it = bot.starboard_threads.find( msg.get_url() );
       if ( thread_it != bot.starboard_threads.end() ) {
         bot.starboard_threads.erase( msg.get_url() );
       }
     }
-    return;
+    co_return;
   }
 
   // Create the embed message
@@ -78,8 +80,10 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
   // Get the referenced message
   const dpp::message::message_ref reference = msg.message_reference;
   dpp::message ref;
-  if ( !reference.message_id.empty() )
-    ref = bot.message_get_sync( reference.message_id, event.channel_id );
+  if ( !reference.message_id.empty() ){
+    auto ref_result = co_await bot.co_message_get( reference.message_id, event.channel_id );
+    ref = std::get<dpp::message>( ref_result.value );
+  }
 
   // Format the referenced message content
   std::string refcontent = ref.content;
@@ -116,16 +120,17 @@ template <typename EventType> void updateStarboardMessage( custom_cluster &bot, 
     dpp::message &m = starboard[ msg.get_url() ];
     m.embeds.at( 0 ) = e;
     m.set_content( "⭐ **" + std::to_string( starCount ) + "** | [`# " + channel.name + "`](<" + msg.get_url() + ">)" );
-    m = bot.message_edit_sync( m );
+    auto m_res = co_await bot.co_message_edit( m );
+    m = std::get<dpp::message>( m_res.value );
   } else if ( starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t> ) {
     // Post in starboard channel
-    const dpp::channel starboard_channel =
-        bot.channel_get_sync( bot.get_config().at( "starboardChannel" ).get<dpp::snowflake>() );
-    starboard[ msg.get_url() ] =
-        bot.message_create_sync( dpp::message( "⭐ **" + std::to_string( starCount ) + "** | [`# " + channel.name +
-                                               "`](<" + msg.get_url() + ">)" )
-                                     .add_embed( e )
-                                     .set_channel_id( starboard_channel.id ) );
+    auto c_res = co_await bot.co_channel_get( bot.get_config().at( "starboardChannel" ).get<dpp::snowflake>() );
+    const dpp::channel starboard_channel = std::get<dpp::channel>( c_res.value );
+    auto m_res2 = co_await bot.co_message_create( dpp::message( "⭐ **" + std::to_string( starCount ) + "** | [`# " +
+      channel.name + "`](<" + msg.get_url() + ">)" )
+      .add_embed( e )
+      .set_channel_id( starboard_channel.id ) );
+    starboard[ msg.get_url() ] = std::get<dpp::message>( m_res2.value );
 
     // Remove the message after 3 days ( thread magic )
     std::string url = msg.get_url();
@@ -204,11 +209,15 @@ int main() {
   }
 
   // Bot ready event
-  bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) {
+  bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) -> dpp::task<void> {
+    // Cast event to void to avoid unused variable warning
+    (void)event;
+
+    // Get the guild ID
     dpp::snowflake guild_id = bot.get_config().at( "guildId" ).get<dpp::snowflake>();
 
     // Delete all commands in the guild
-    bot.guild_bulk_command_delete_sync( guild_id );
+    co_await bot.co_guild_bulk_command_delete( guild_id );
 
     // Create a vector of slash commands from the commands vector
     std::vector<dpp::slashcommand> scommands;
@@ -222,7 +231,7 @@ int main() {
     }
 
     // Create all slash commands in the guild
-    bot.guild_bulk_command_create_sync( scommands, guild_id );
+    co_await bot.co_guild_bulk_command_create( scommands, guild_id );
 
     // set status
     dpp::activity activity;
@@ -232,31 +241,32 @@ int main() {
     bot.set_presence( dpp::presence( dpp::presence_status::ps_online, activity ) );
   } );
 
-  bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) {
+  bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) -> dpp::task<void> {
     // Get the author, message, channel and config
     const dpp::user author = event.msg.author;
     const dpp::message msg = event.msg;
-    const dpp::channel channel = bot.channel_get_sync( event.msg.channel_id );
+    auto channel_result = co_await bot.co_channel_get( event.msg.channel_id );
+    const dpp::channel channel = std::get<dpp::channel>( channel_result.value );
     json config = bot.get_config();
     const std::vector<dpp::snowflake> botChannels = config.at( "botChannels" );
 
     // DPP regex downloading
     auto regex = std::regex(
-      R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|twitch\.tv|tiktok\.com|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/|clip\/)?)([\w\-]+)(\S+)?\b)",
-      std::regex::icase
-    );
-  
+        R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|twitch\.tv|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/|clip\/)?)([\w\-]+)(\S+)?\b)",
+        std::regex::icase );
+
     std::smatch match;
     if ( std::regex_search( event.msg.content, match, regex ) ) {
       std::string url = event.msg.content.substr( match.position(), match.length() );
 
-      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 8M -f \"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " + url +
-                            " -o \"../media//ytdlp/output.mp4\"";
-      char buffer[128];
+      std::string simcommand = "yt-dlp --simulate --match-filter \"duration<=300\" --max-filesize 8M -f "
+                               "\"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " +
+                               url + " -o \"../media//ytdlp/output.mp4\"";
+      char buffer[ 128 ];
       std::string result = "";
       FILE *pipe = popen( simcommand.c_str(), "r" );
       if ( !pipe ) {
-        return;
+        co_return;
       }
       while ( !feof( pipe ) ) {
         if ( fgets( buffer, 128, pipe ) != NULL ) {
@@ -264,42 +274,43 @@ int main() {
         }
       }
       pclose( pipe );
-      if (result.empty()) {
+      if ( result.empty() ) {
         // did not match filter or max filesize
         std ::cout << "did not match filter or max filesize" << std::endl;
-        return;
+        co_return;
       }
       // Start typing indicator thread
-      std::atomic<bool> typing_indicator_running(true);
-      std::thread typing_indicator_thread([&bot, &channel, &typing_indicator_running]() {
-        while (typing_indicator_running) {
-          bot.channel_typing(channel);
-          std::this_thread::sleep_for(std::chrono::seconds(2));
+      std::atomic<bool> typing_indicator_running( true );
+      std::thread typing_indicator_thread( [ &bot, &channel, &typing_indicator_running ]() {
+        while ( typing_indicator_running ) {
+          bot.channel_typing( channel );
+          std::this_thread::sleep_for( std::chrono::seconds( 2 ) );
         }
-      });
+      } );
 
-      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 8M -f \"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " + url +
-                " -o \"../media//ytdlp/output.%(ext)s\"";
-      system(command.c_str()); // Download the video
+      std::string command = "yt-dlp --match-filter \"duration<=300\" --max-filesize 8M -f "
+                            "\"bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best\" " +
+                            url + " -o \"../media//ytdlp/output.%(ext)s\"";
+      system( command.c_str() ); // Download the video
 
       // find the file
       std::string path;
-      for (const auto &entry : fs::directory_iterator("../media/ytdlp/")) {
-        if (entry.is_regular_file() && entry.path().filename().string().find("output") != std::string::npos) {
+      for ( const auto &entry : fs::directory_iterator( "../media/ytdlp/" ) ) {
+        if ( entry.is_regular_file() && entry.path().filename().string().find( "output" ) != std::string::npos ) {
           path = entry.path().string();
           break;
         }
       }
 
-      if (path.empty()) {
+      if ( path.empty() ) {
         typing_indicator_running = false;
         typing_indicator_thread.join();
-        return;
+        co_return;
       }
 
       // Reply with the file
-      std::ifstream f(path);
-      if (f) {
+      std::ifstream f( path );
+      if ( f ) {
 
         // Read the file size
         f.seekg( 0, std::ios::end );
@@ -311,7 +322,7 @@ int main() {
         if ( f.read( buffer.data(), length ) ) {
           std::string fileContent( buffer.begin(), buffer.end() );
 
-            event.reply( dpp::message().add_file( path, fileContent, "video" ), true, logCallback );
+          event.reply( dpp::message().add_file( path, fileContent, "video" ), true, logCallback );
           f.close();
         }
       }
@@ -330,7 +341,7 @@ int main() {
     // Ignore messages from the bot itself and from channels that are not bot channels
     if ( author.id == bot.me.id ||
          std::find( botChannels.begin(), botChannels.end(), channel.id ) == botChannels.end() )
-      return;
+      co_return;
 
     // Get the content of the message
     std::string content = event.msg.content;
@@ -402,7 +413,9 @@ int main() {
 
       // Reply with a random sentence and set the reference to the sent message
       for ( const auto &sentence : arr ) {
-        msg_.set_reference( bot.message_create_sync( msg_.set_content( sentence ) ).id );
+
+        auto response = co_await bot.co_message_create( msg_.set_content( sentence ) );
+        msg_.set_reference( std::get<dpp::message>( response.value ).id );
 
         // Sleep for 1 second (rate limit)
         std::this_thread::sleep_for( std::chrono::milliseconds( 1000 ) );
@@ -433,11 +446,11 @@ int main() {
 
   // Handle message reaction add
   bot.on_message_reaction_add(
-      [ &bot ]( const dpp::message_reaction_add_t &event ) { updateStarboardMessage( bot, event ); } );
+      [ &bot ]( const dpp::message_reaction_add_t &event ) -> dpp::task<void> { co_await updateStarboardMessage( bot, event ); } );
 
   // Handle message reaction remove
   bot.on_message_reaction_remove(
-      [ &bot ]( const dpp::message_reaction_remove_t &event ) { updateStarboardMessage( bot, event ); } );
+      [ &bot ]( const dpp::message_reaction_remove_t &event ) -> dpp::task<void> { co_await updateStarboardMessage( bot, event ); } );
 
   // Start bot
   bot.start( dpp::st_wait );
