@@ -20,15 +20,6 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-// set status
-void setStatus(custom_cluster &bot) {
-  dpp::activity activity;
-  activity.type = dpp::activity_type::at_game;
-  activity.name = "with fire";
-
-  bot.set_presence( dpp::presence( dpp::presence_status::ps_online, activity ) );
-}
-
 // Log errors from DPP
 void logCallback( const dpp::confirmation_callback_t callback ) {
   if ( callback.is_error() ) {
@@ -148,7 +139,11 @@ int main() {
     co_await bot.co_guild_bulk_command_create( scommands, guild_id );
 
     // Set the bot's status
-    setStatus( bot );
+    dpp::activity activity;
+    activity.type = dpp::activity_type::at_game;
+    activity.name = "with fire";
+
+    bot.set_presence( dpp::presence( dpp::presence_status::ps_online, activity ) );
   } );
 
   bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) -> dpp::task<void> {
