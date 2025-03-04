@@ -21,7 +21,7 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 // set status
-bool setStatus(custom_cluster &bot) {
+void setStatus(custom_cluster &bot) {
   dpp::activity activity;
   activity.type = dpp::activity_type::at_game;
   activity.name = "with fire";
