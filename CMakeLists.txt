@@ -14,9 +14,11 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(DPP REQUIRED)
+find_package(Boost REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Link the pre-installed DPP package to the main executable
-target_link_libraries(${PROJECT_NAME} ${DPP_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${DPP_LIBRARIES} Boost::Boost OpenSSL::SSL OpenSSL::Crypto)
 
 # Include the DPP directories for the main executable
 target_include_directories(${PROJECT_NAME} PRIVATE ${DPP_INCLUDE_DIR})
@@ -40,7 +42,7 @@ foreach(COMMAND_SOURCE ${COMMAND_SOURCES})
   add_library(${COMMAND_NAME} SHARED ${COMMAND_SOURCE})
 
   # Link the DPP libraries to the command library
-  target_link_libraries(${COMMAND_NAME} ${DPP_LIBRARIES})
+  target_link_libraries(${COMMAND_NAME} ${DPP_LIBRARIES} Boost::Boost OpenSSL::SSL OpenSSL::Crypto)
 
   # Include the DPP directories for the command library
   target_include_directories(${COMMAND_NAME} PRIVATE ${DPP_INCLUDE_DIR})
