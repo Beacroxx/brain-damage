@@ -3,6 +3,7 @@
 #include "commands/command.hpp"
 #include "starboard.hpp"
 
+#include <boost/asio.hpp>
 #include <concepts>
 #include <csignal>
 #include <dlfcn.h>
@@ -37,6 +38,27 @@ void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake
     std::this_thread::sleep_for( std::chrono::seconds( seconds ) );
     bot.message_delete( msgid, channelid, logCallback );
   } ).detach();
+}
+
+// Checks if the bot has an internet connection
+bool internetConnected() {
+  try {
+    boost::asio::io_context io_service;
+    boost::asio::ip::tcp::resolver resolver( io_service );
+    boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve( "www.google.com", "80" );
+    return true;
+  } catch ( const std::exception &e ) {
+    return false;
+  }
+}
+
+// Heartbeat function to check for internet connection
+void heartbeat( custom_cluster &bot ) {
+  if ( !internetConnected() ) {
+    std::cerr << "No internet connection" << std::endl;
+    bot.shutdown();
+    exit( 0 ); // Exit the program cleanly
+  }
 }
 
 int main() {
@@ -87,6 +109,14 @@ int main() {
   bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) -> dpp::task<void> {
     // Cast event to void to avoid unused variable warning
     (void)event;
+
+    // Start the heartbeat thread
+    std::thread( [ &bot ]() {
+      while ( true ) {
+        std::this_thread::sleep_for( std::chrono::seconds( 30 ) );
+        heartbeat( bot );
+      }
+    } ).detach();
 
     // Get the guild ID
     dpp::snowflake guild_id = bot.get_config().at( "guildId" ).get<dpp::snowflake>();
@@ -161,7 +191,7 @@ int main() {
         }
       }
       pclose( pipe );
-      
+
       if ( result.find( "skipping" ) != std::string::npos ) {
         typing_indicator_running = false;
         typing_indicator_thread.join();
@@ -178,7 +208,8 @@ int main() {
       if ( result.find( "ERROR:" ) != std::string::npos ) {
         typing_indicator_running = false;
         typing_indicator_thread.join();
-        auto msg = dpp::message( "Couldn't download the video. Make sure the link is valid and contains a video" ).set_channel_id( event.msg.channel_id );
+        auto msg = dpp::message( "Couldn't download the video. Make sure the link is valid and contains a video" )
+                       .set_channel_id( event.msg.channel_id );
         bot.message_create( msg, [ &bot ]( const dpp::confirmation_callback_t &callback ) {
           if ( !callback.is_error() ) {
             const dpp::message &created_msg = std::get<dpp::message>( callback.value );
@@ -382,6 +413,11 @@ int main() {
   bot.on_message_reaction_remove( [ &bot ]( const dpp::message_reaction_remove_t &event ) -> dpp::task<void> {
     co_await updateStarboardMessage( bot, event );
   } );
+
+  // Wait for internet
+  while ( !internetConnected() ) {
+    std::this_thread::sleep_for( std::chrono::seconds( 5 ) );
+  }
 
   // Start bot
   bot.start( dpp::st_wait );
