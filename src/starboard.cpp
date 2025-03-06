@@ -129,6 +129,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
         starboard.erase(url);
       }
       botPtr->starboard_threads.erase(url);
+      std::cout << "Thread: Message removed from starboard" << std::endl;
     });
 
     // Store the thread and detach it
