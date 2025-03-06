@@ -112,7 +112,8 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
     // Remove the message after 3 days ( thread magic )
     std::string url = msg.get_url();
     auto thread = std::make_shared<std::thread>([botPtr = &bot, url]() {
-      std::this_thread::sleep_for(std::chrono::hours(24 * 3));
+      //std::this_thread::sleep_for(std::chrono::hours(24 * 3));
+      std::this_thread::sleep_for(std::chrono::seconds(10));
       std::unique_lock<std::mutex> lock(botPtr->starboard_mutex, std::defer_lock);
       if (!lock.try_lock()) {
         //std::cout << "Thread: Waiting for mutex..." << std::endl;

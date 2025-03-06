@@ -40,21 +40,6 @@ void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake
   } ).detach();
 }
 
-// Check last heartbeat for each shard and exit if it's too long ago
-void checkHeartBeat( custom_cluster &bot ) {
-  auto shards = bot.get_shards();
-  for (auto &shardPair : shards) {
-    auto &shard = shardPair.second;
-    time_t lastHeartBeat = shard->last_heartbeat;
-    uint32_t heartBeatInterval = shard->heartbeat_interval;
-    time_t now = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-    if (now - lastHeartBeat > heartBeatInterval) {
-      std::cerr << "Shard " << shard->shard_id << " last heartbeat was " << now - lastHeartBeat << " seconds ago" << std::endl;
-      exit( 1 ); // Exit with error code 1
-    }
-  }
-}
-
 int main() {
   // Initialize signal handler
   std::signal( SIGINT, signalHandler );
@@ -99,28 +84,10 @@ int main() {
     }
   }
 
-  // Log that the bot has resumed
-  bot.on_resumed( [ &bot ]( const dpp::resumed_t &event ) {
-    // Cast event to void to avoid unused variable warning
-    (void)event;
-
-    // Log that the bot has resumed with timestamp
-    std::time_t now = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-    std::cout << "Resumed at " << std::ctime( &now );
-  } );
-
   // Bot ready event
   bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) -> dpp::task<void> {
     // Cast event to void to avoid unused variable warning
     (void)event;
-
-    // spawn a thread to check the last heartbeat of each shard
-    std::thread( [ &bot ]() {
-      while (true) {
-        checkHeartBeat( bot );
-        std::this_thread::sleep_for( std::chrono::seconds( 30 ) );
-      }
-    } ).detach();
 
     // Get the guild ID
     dpp::snowflake guild_id = bot.get_config().at( "guildId" ).get<dpp::snowflake>();
