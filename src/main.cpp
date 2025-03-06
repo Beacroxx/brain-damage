@@ -133,7 +133,6 @@ int main() {
   } );
 
   bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) -> dpp::task<void> {
-    LOG_DEBUG( "Message create event triggered" );
     // Get the author, message, channel and config
     const dpp::user author = event.msg.author;
     const dpp::message msg = event.msg;
