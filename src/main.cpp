@@ -1,3 +1,5 @@
+#define VERBOSE_DEBUG
+
 #include "main.hpp"
 
 #include "commands/command.hpp"
@@ -20,6 +22,12 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+#ifdef VERBOSE_DEBUG
+#define LOG_DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+#else
+#define LOG_DEBUG(msg)
+#endif
+
 // Log errors from DPP
 void logCallback( const dpp::confirmation_callback_t callback ) {
   if ( callback.is_error() ) {
@@ -34,17 +42,20 @@ void signalHandler( int signal ) {
 }
 
 void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake channelid, int seconds ) {
+  LOG_DEBUG( "Scheduling message deletion in " + std::to_string( seconds ) + " seconds" );
   std::thread( [ &bot, msgid, channelid, seconds ]() {
+    LOG_DEBUG( "Starting deleteAfterAsync thread" );
     std::this_thread::sleep_for( std::chrono::seconds( seconds ) );
+    LOG_DEBUG( "Deleting message after " + std::to_string( seconds ) + " seconds" );
     bot.message_delete( msgid, channelid, logCallback );
   } ).detach();
 }
 
 int main() {
-  // Initialize signal handler
+  LOG_DEBUG( "Initializing signal handler" );
   std::signal( SIGINT, signalHandler );
 
-  // Load config
+  LOG_DEBUG( "Loading config" );
   std::fstream cfg_fstream;
   cfg_fstream.open( "../config.json", std::fstream::in );
   if ( !cfg_fstream.is_open() ) {
@@ -54,16 +65,17 @@ int main() {
   json config = json::parse( cfg_fstream );
   cfg_fstream.close();
 
-  // Initialize bot
+  LOG_DEBUG( "Initializing bot" );
   custom_cluster bot( config.at( "token" ), dpp::intents::i_all_intents );
   bot.load_config();
   bot.on_log( dpp::utility::cout_logger() );
 
-  // Initialize commands
+  LOG_DEBUG( "Loading commands" );
   std::vector<std::unique_ptr<Command>> commands;
   // Iterate over all .so files in the commands/ directory
   for ( const auto &file : fs::directory_iterator( "./commands/" ) ) {
     if ( file.is_regular_file() && file.path().extension() == ".so" ) {
+      LOG_DEBUG( "Loading .so file: " + file.path().string() );
       // Load the .so file
       void *lib_handle = dlopen( file.path().c_str(), RTLD_LAZY );
       if ( lib_handle ) {
@@ -75,6 +87,7 @@ int main() {
         create_command_func create_command = (create_command_func)dlsym( lib_handle, func_name.c_str() );
         if ( create_command ) {
           commands.push_back( std::unique_ptr<Command>( create_command() ) );
+          LOG_DEBUG( "Loaded command: " + command_name );
         } else {
           std::cerr << "Error loading command from library: " << dlerror() << std::endl;
         }
@@ -86,12 +99,13 @@ int main() {
 
   // Bot ready event
   bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) -> dpp::task<void> {
+    LOG_DEBUG( "Bot ready event triggered" );
     // Cast event to void to avoid unused variable warning
     (void)event;
 
     // Get the guild ID
     dpp::snowflake guild_id = bot.get_config().at( "guildId" ).get<dpp::snowflake>();
-
+    LOG_DEBUG( "Deleting all commands in the guild" );
     // Delete all commands in the guild
     co_await bot.co_guild_bulk_command_delete( guild_id );
 
@@ -106,6 +120,7 @@ int main() {
       scommands.push_back( scommand );
     }
 
+    LOG_DEBUG( "Creating all slash commands in the guild" );
     // Create all slash commands in the guild
     co_await bot.co_guild_bulk_command_create( scommands, guild_id );
 
@@ -118,6 +133,7 @@ int main() {
   } );
 
   bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) -> dpp::task<void> {
+    LOG_DEBUG( "Message create event triggered" );
     // Get the author, message, channel and config
     const dpp::user author = event.msg.author;
     const dpp::message msg = event.msg;
@@ -133,10 +149,12 @@ int main() {
 
     std::smatch match;
     if ( std::regex_search( event.msg.content, match, regex ) ) {
+      LOG_DEBUG( "URL detected in message" );
 
       // Start typing indicator thread
       std::atomic<bool> typing_indicator_running( true );
       std::thread typing_indicator_thread( [ &bot, &channel, &typing_indicator_running ]() {
+        LOG_DEBUG( "Starting typing indicator thread" );
         while ( typing_indicator_running ) {
           bot.channel_typing( channel );
           std::this_thread::sleep_for( std::chrono::seconds( 2 ) );
@@ -152,6 +170,7 @@ int main() {
       std::string result = "";
       FILE *pipe = popen( simcommand.c_str(), "r" );
       if ( !pipe ) {
+        LOG_DEBUG( "Failed to open pipe for yt-dlp simulation command" );
         typing_indicator_running = false;
         typing_indicator_thread.join();
         co_return;
@@ -164,6 +183,7 @@ int main() {
       pclose( pipe );
 
       if ( result.find( "skipping" ) != std::string::npos ) {
+        LOG_DEBUG( "Video too long or too large" );
         typing_indicator_running = false;
         typing_indicator_thread.join();
         auto msg = dpp::message( "The video is too long or too large." ).set_channel_id( event.msg.channel_id );
@@ -177,6 +197,7 @@ int main() {
       }
 
       if ( result.find( "ERROR:" ) != std::string::npos ) {
+        LOG_DEBUG( "Error downloading video" );
         typing_indicator_running = false;
         typing_indicator_thread.join();
         auto msg = dpp::message( "Couldn't download the video. Make sure the link is valid and contains a video" )
@@ -195,6 +216,7 @@ int main() {
                             url + " -o \"../media//ytdlp/output.%(ext)s\"";
       pipe = popen( command.c_str(), "r" );
       if ( !pipe ) {
+        LOG_DEBUG( "Failed to open pipe for yt-dlp command" );
         typing_indicator_running = false;
         typing_indicator_thread.join();
         co_return;
@@ -216,6 +238,7 @@ int main() {
       }
 
       if ( path.empty() ) {
+        LOG_DEBUG( "Downloaded video file not found" );
         typing_indicator_running = false;
         typing_indicator_thread.join();
 
@@ -358,6 +381,7 @@ int main() {
   bot.on_slashcommand( [ &bot, &commands ]( const dpp::slashcommand_t &event ) {
     for ( const auto &command : commands ) {
       if ( event.command.get_command_name() == command->get_name() ) {
+        LOG_DEBUG( "Executing slash command: " + command->get_name() );
 
         // Get channel ID and check if it's allowed
         dpp::snowflake channel_id = event.command.channel_id;
@@ -377,14 +401,17 @@ int main() {
 
   // Handle message reaction add
   bot.on_message_reaction_add( [ &bot ]( const dpp::message_reaction_add_t &event ) -> dpp::task<void> {
+    LOG_DEBUG( "Message reaction add event triggered" );
     co_await updateStarboardMessage( bot, event );
   } );
 
   // Handle message reaction remove
   bot.on_message_reaction_remove( [ &bot ]( const dpp::message_reaction_remove_t &event ) -> dpp::task<void> {
+    LOG_DEBUG( "Message reaction remove event triggered" );
     co_await updateStarboardMessage( bot, event );
   } );
 
+  LOG_DEBUG( "Starting bot" );
   // Start bot
   bot.start( dpp::st_wait );
 }

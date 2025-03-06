@@ -1,3 +1,5 @@
+#define VERBOSE_DEBUG
+
 #include "starboard.hpp"
 #include <chrono>
 #include <iostream>
@@ -7,20 +9,30 @@
 #include <algorithm>
 #include <dpp/dpp.h>
 
+#ifdef VERBOSE_DEBUG
+#define LOG_DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+#else
+#define LOG_DEBUG(msg)
+#endif
+
 template <typename EventType>
 dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &event) {
+  LOG_DEBUG("Attempting to lock starboard mutex");
   std::unique_lock<std::mutex> lock(bot.starboard_mutex, std::defer_lock);
 
   // If the mutex is already locked, wait for it to unlock
   if (!lock.try_lock()) {
-    //std::cout << "Starboard: Waiting for mutex..." << std::endl;
+    LOG_DEBUG("Starboard mutex is locked, waiting...");
     auto start = std::chrono::high_resolution_clock::now();
     lock.lock();
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    //std::cout << "Starboard: Mutex acquired after " << duration.count() << "ms" << std::endl;
+    LOG_DEBUG("Starboard mutex acquired after " + std::to_string(duration.count()) + "ms");
+  } else {
+    LOG_DEBUG("Starboard mutex acquired immediately");
   }
 
+  LOG_DEBUG("Fetching message details");
   // Get the message, channel, and star count
   auto msg_result = co_await bot.co_message_get(event.message_id, event.channel_id);
   const dpp::message msg = std::get<dpp::message>(msg_result.value);
@@ -38,6 +50,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
   // If the message has less than 2 stars and a reaction has been removed, remove it from the starboard
   if (starCount < 2) {
     if (starboarded && std::is_same_v<EventType, dpp::message_reaction_remove_t>) {
+      LOG_DEBUG("Removing message from starboard");
       co_await bot.co_message_delete(starboard[msg.get_url()].id, starboard[msg.get_url()].channel_id);
       starboard.erase(msg.get_url());
       auto thread_it = bot.starboard_threads.find(msg.get_url());
@@ -48,6 +61,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
     co_return;
   }
 
+  LOG_DEBUG("Creating embed message");
   // Create the embed message
   dpp::embed e;
   e.set_author(msg.author.username, msg.author.get_url(), msg.author.get_avatar_url());
@@ -93,6 +107,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
 
   // Check if the message is starred
   if (starboarded) {
+    LOG_DEBUG("Editing starboard message");
     // Edit the starboard message
     dpp::message &m = starboard[msg.get_url()];
     m.embeds.at(0) = e;
@@ -100,6 +115,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
     auto m_res = co_await bot.co_message_edit(m);
     m = std::get<dpp::message>(m_res.value);
   } else if (starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t>) {
+    LOG_DEBUG("Posting message to starboard channel");
     // Post in starboard channel
     auto c_res = co_await bot.co_channel_get(bot.get_config().at("starboardChannel").get<dpp::snowflake>());
     const dpp::channel starboard_channel = std::get<dpp::channel>(c_res.value);
@@ -109,19 +125,20 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
       .set_channel_id(starboard_channel.id));
     starboard[msg.get_url()] = std::get<dpp::message>(m_res2.value);
 
-    // Remove the message after 3 days ( thread magic )
+    // Remove the message from ram after 3 days ( thread magic )
     std::string url = msg.get_url();
     auto thread = std::make_shared<std::thread>([botPtr = &bot, url]() {
+      LOG_DEBUG("Thread started for message removal after delay");
       //std::this_thread::sleep_for(std::chrono::hours(24 * 3));
       std::this_thread::sleep_for(std::chrono::seconds(10));
       std::unique_lock<std::mutex> lock(botPtr->starboard_mutex, std::defer_lock);
       if (!lock.try_lock()) {
-        //std::cout << "Thread: Waiting for mutex..." << std::endl;
+        LOG_DEBUG("Thread: Starboard mutex is locked, waiting...");
         auto start = std::chrono::high_resolution_clock::now();
         lock.lock();
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-        //std::cout << "Thread: Mutex acquired after " << duration.count() << "ms" << std::endl;
+        LOG_DEBUG("Thread: Starboard mutex acquired after " + std::to_string(duration.count()) + "ms");
       }
       auto &starboard = botPtr->starboard;
       if (starboard.find(url) != starboard.end() &&
@@ -129,7 +146,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
         starboard.erase(url);
       }
       botPtr->starboard_threads.erase(url);
-      std::cout << "Thread: Message removed from starboard" << std::endl;
+      LOG_DEBUG("Thread: Message url removed from memory");
     });
 
     // Store the thread and detach it
