@@ -13,12 +13,12 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
 
   // If the mutex is already locked, wait for it to unlock
   if (!lock.try_lock()) {
-    std::cout << "Starboard: Waiting for mutex..." << std::endl;
+    //std::cout << "Starboard: Waiting for mutex..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     lock.lock();
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::cout << "Starboard: Mutex acquired after " << duration.count() << "ms" << std::endl;
+    //std::cout << "Starboard: Mutex acquired after " << duration.count() << "ms" << std::endl;
   }
 
   // Get the message, channel, and star count
@@ -115,12 +115,12 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
       std::this_thread::sleep_for(std::chrono::hours(24 * 3));
       std::unique_lock<std::mutex> lock(botPtr->starboard_mutex, std::defer_lock);
       if (!lock.try_lock()) {
-        std::cout << "Thread: Waiting for mutex..." << std::endl;
+        //std::cout << "Thread: Waiting for mutex..." << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
         lock.lock();
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-        std::cout << "Thread: Mutex acquired after " << duration.count() << "ms" << std::endl;
+        //std::cout << "Thread: Mutex acquired after " << duration.count() << "ms" << std::endl;
       }
       auto &starboard = botPtr->starboard;
       if (starboard.find(url) != starboard.end() &&

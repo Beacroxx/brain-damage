@@ -50,6 +50,7 @@ void checkHeartBeat( custom_cluster &bot ) {
     time_t now = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
     if (now - lastHeartBeat > heartBeatInterval) {
       std::cerr << "Shard " << shard->shard_id << " last heartbeat was " << now - lastHeartBeat << " seconds ago" << std::endl;
+      exit( 1 ); // Exit with error code 1
     }
   }
 }
