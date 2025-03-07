@@ -156,9 +156,8 @@ int main() {
     if ( event.fd != 5 ) {
       LOG_DEBUG( "Socket closed: " + std::to_string( event.fd ) );
     } if ( event.fd == 4 ) {
-      // Timeout, exit
-      LOG_DEBUG( "Socket closed: " + std::to_string( event.fd ) );
-      exit( 0 );
+      // reconnect
+      // bot.start( dpp::st_return );
     }
   } );
 
