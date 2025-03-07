@@ -7,7 +7,7 @@ using json = nlohmann::json;
 
 class custom_cluster : public dpp::cluster {
 public:
-  custom_cluster( const std::string &token, int intents ) : dpp::cluster( token, intents ) {};
+  using dpp::cluster::cluster; // Inherit constructors
 
   void load_config() {
     std::ifstream cfg_ifstream( "../config.json" );
