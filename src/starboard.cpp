@@ -16,7 +16,7 @@
 #endif
 
 template <typename EventType>
-dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &event) {
+void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
   LOG_DEBUG("Attempting to lock starboard mutex");
   std::unique_lock<std::mutex> lock(bot.starboard_mutex, std::defer_lock);
 
@@ -34,13 +34,11 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
 
   LOG_DEBUG("Fetching message details");
   // Get the message, channel, and star count
-  auto msg_result = co_await bot.co_message_get(event.message_id, event.channel_id);
-  const dpp::message msg = std::get<dpp::message>(msg_result.value);
+  const dpp::message msg = bot.message_get_sync(event.message_id, event.channel_id);
   const auto starCountIt = std::find_if(msg.reactions.begin(), msg.reactions.end(),
                                         [](const dpp::reaction &r) { return r.emoji_name == "⭐"; });
   const int starCount = starCountIt != msg.reactions.end() ? starCountIt->count : 0;
-  auto channel_result = co_await bot.co_channel_get(event.channel_id);
-  const dpp::channel channel = std::get<dpp::channel>(channel_result.value);
+  const dpp::channel channel = bot.channel_get_sync(event.channel_id);
   const long timestamp = msg.get_creation_time();
 
   // Check if the message is already in the starboard
@@ -51,14 +49,14 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
   if (starCount < 2) {
     if (starboarded && std::is_same_v<EventType, dpp::message_reaction_remove_t>) {
       LOG_DEBUG("Removing message from starboard");
-      co_await bot.co_message_delete(starboard[msg.get_url()].id, starboard[msg.get_url()].channel_id);
+      bot.message_delete(starboard[msg.get_url()].id, starboard[msg.get_url()].channel_id);
       starboard.erase(msg.get_url());
       auto thread_it = bot.starboard_threads.find(msg.get_url());
       if (thread_it != bot.starboard_threads.end()) {
         bot.starboard_threads.erase(msg.get_url());
       }
     }
-    co_return;
+    return;
   }
 
   LOG_DEBUG("Creating embed message");
@@ -72,8 +70,7 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
   const dpp::message::message_ref reference = msg.message_reference;
   dpp::message ref;
   if (!reference.message_id.empty()) {
-    auto ref_result = co_await bot.co_message_get(reference.message_id, event.channel_id);
-    ref = std::get<dpp::message>(ref_result.value);
+    ref = bot.message_get_sync(reference.message_id, event.channel_id);
   }
 
   // Format the referenced message content
@@ -112,18 +109,15 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
     dpp::message &m = starboard[msg.get_url()];
     m.embeds.at(0) = e;
     m.set_content("⭐ **" + std::to_string(starCount) + "** | [`# " + channel.name + "`](<" + msg.get_url() + ">)");
-    auto m_res = co_await bot.co_message_edit(m);
-    m = std::get<dpp::message>(m_res.value);
+    m = bot.message_edit_sync(m);
   } else if (starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t>) {
     LOG_DEBUG("Posting message to starboard channel");
     // Post in starboard channel
-    auto c_res = co_await bot.co_channel_get(bot.get_config().at("starboardChannel").get<dpp::snowflake>());
-    const dpp::channel starboard_channel = std::get<dpp::channel>(c_res.value);
-    auto m_res2 = co_await bot.co_message_create(dpp::message("⭐ **" + std::to_string(starCount) + "** | [`# " +
-      channel.name + "`](<" + msg.get_url() + ">)")
-      .add_embed(e)
-      .set_channel_id(starboard_channel.id));
-    starboard[msg.get_url()] = std::get<dpp::message>(m_res2.value);
+    const dpp::channel starboard_channel = bot.channel_get_sync(bot.get_config().at("starboardChannel").get<dpp::snowflake>());
+    starboard[msg.get_url()] = bot.message_create_sync(dpp::message("⭐ **" + std::to_string(starCount) + "** | [`# " +
+    channel.name + "`](<" + msg.get_url() + ">)")
+    .add_embed(e)
+    .set_channel_id(starboard_channel.id));
 
     // Remove the message from ram after 3 days ( thread magic )
     std::string url = msg.get_url();
@@ -156,5 +150,5 @@ dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &eve
 }
 
 // Explicit template instantiation
-template dpp::task<void> updateStarboardMessage<dpp::message_reaction_add_t>(custom_cluster &bot, const dpp::message_reaction_add_t &event);
-template dpp::task<void> updateStarboardMessage<dpp::message_reaction_remove_t>(custom_cluster &bot, const dpp::message_reaction_remove_t &event);
+template void updateStarboardMessage<dpp::message_reaction_add_t>(custom_cluster &bot, const dpp::message_reaction_add_t &event);
+template void updateStarboardMessage<dpp::message_reaction_remove_t>(custom_cluster &bot, const dpp::message_reaction_remove_t &event);
