@@ -76,6 +76,13 @@ void log_websocket_message( const std::string &raw_message ) {
     case 3: // Presence Update
       LOG_DEBUG( "[Presence Update] Status: " + data[ "status" ].get<std::string>() );
       break;
+    case 8: // REQUEST_GUILD_MEMBERS
+      LOG_DEBUG( "[Request Guild Members] Guild ID: " + data[ "guild_id" ].get<std::string>() +
+                 ", Limit: " + std::to_string( data[ "limit" ].get<int>() ) +
+                 ", Presences: " + ( data[ "presences" ].get<bool>() ? "true" : "false" ) + ", Query: '" +
+                 data[ "query" ].get<std::string>() + "'" );
+      break;
+
     default:
       LOG_DEBUG( "[Unhandled Opcode] " + json_msg.dump( 4 ) );
       break;
@@ -142,7 +149,9 @@ int main() {
   } );
 
   bot.on_socket_close( [ &bot ]( const dpp::socket_close_t &event ) {
-    LOG_DEBUG( "Socket closed: " + std::to_string( event.from()->shard_id ) );
+    if ( event.fd != 5 ) {
+      LOG_DEBUG( "Socket closed: " + std::to_string( event.fd ) );
+    }
   } );
 
   // Bot ready event
