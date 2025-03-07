@@ -61,7 +61,7 @@ void messageCreate(custom_cluster &bot, const dpp::message_create_t &event) {
 
   // DPP regex downloading
   auto regex = std::regex(
-      R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|twitch\.tv|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/|clip\/)?)([\w\-]+)(\S+)?\b)",
+      R"(\b((?:https?:)?\/\/)?((?:www|m)\.)?((?:vimeo\.com|dailymotion\.com|twitch\.tv|facebook\.com|instagram\.com)\/(?:[\w\-]+\?v=|embed\/|v\/|clip\/)?)([\w\-]+)(\S+)?\b)",
       std::regex::icase);
 
   std::smatch match;
