@@ -69,7 +69,6 @@ void log_websocket_message( const std::string &raw_message ) {
     // Log based on opcode
     switch ( opcode ) {
     case 1: // Heartbeat
-      LOG_DEBUG( "[Heartbeat] Sequence: " + std::to_string( data.get<int>() ) );
       break;
     case 2:                                        // Identify
       LOG_DEBUG( "[Identify] " + data.dump( 4 ) ); // Pretty-print JSON with indentation
