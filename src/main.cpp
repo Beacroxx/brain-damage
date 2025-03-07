@@ -97,6 +97,18 @@ int main() {
     }
   }
 
+  bot.on_log( [ &bot ]( const dpp::log_t &event ) {
+    if ( event.severity == dpp::loglevel::ll_error ) {
+      std::cerr << "Error: " << event.message << std::endl;
+    } else {
+      LOG_DEBUG( event.message );
+    }
+  } );
+
+  bot.on_socket_close( [ &bot ]( const dpp::socket_close_t &event ) {
+    LOG_DEBUG( "Socket closed: " + std::to_string( event.fd ) );
+  } );
+
   // Bot ready event
   bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) -> dpp::task<void> {
     LOG_DEBUG( "Bot ready event triggered" );
