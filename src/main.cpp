@@ -23,9 +23,9 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 #ifdef VERBOSE_DEBUG
-#define LOG_DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+#define LOG_DEBUG( msg ) std::cout << "[DEBUG] " << msg << std::endl
 #else
-#define LOG_DEBUG(msg)
+#define LOG_DEBUG( msg )
 #endif
 
 // Log errors from DPP
@@ -49,6 +49,40 @@ void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake
     LOG_DEBUG( "Deleting message after " + std::to_string( seconds ) + " seconds" );
     bot.message_delete( msgid, channelid, logCallback );
   } ).detach();
+}
+
+void log_websocket_message( const std::string &raw_message ) {
+  try {
+    // Parse the JSON message
+    auto json_msg = nlohmann::json::parse( raw_message.substr( 3 ) ); // Skip "W: "
+
+    // Extract opcode and data
+    int opcode = json_msg[ "op" ];
+    auto data = json_msg[ "d" ];
+
+    // Mask sensitive fields
+    if ( data.contains( "token" ) ) {
+      data[ "token" ] = "*****";
+    }
+
+    // Log based on opcode
+    switch ( opcode ) {
+    case 1: // Heartbeat
+      LOG_DEBUG( "[Heartbeat] Sequence: " + std::to_string( data.get<int>() ) );
+      break;
+    case 2:                                        // Identify
+      LOG_DEBUG( "[Identify] " + data.dump( 4 ) ); // Pretty-print JSON with indentation
+      break;
+    case 3: // Presence Update
+      LOG_DEBUG( "[Presence Update] Status: " + data[ "status" ].get<std::string>() );
+      break;
+    default:
+      LOG_DEBUG( "[Unhandled Opcode] " + json_msg.dump( 4 ) );
+      break;
+    }
+  } catch ( const std::exception &e ) {
+    std::cerr << "[ERROR] Failed to parse WebSocket message: " << e.what() << std::endl;
+  }
 }
 
 int main() {
@@ -100,13 +134,15 @@ int main() {
   bot.on_log( [ &bot ]( const dpp::log_t &event ) {
     if ( event.severity == dpp::loglevel::ll_error ) {
       std::cerr << "Error: " << event.message << std::endl;
+    } else if ( event.message.rfind( "W:", 0 ) == 0 ) { // Check if the log starts with "W:"
+      log_websocket_message( event.message );
     } else {
       LOG_DEBUG( event.message );
     }
   } );
 
   bot.on_socket_close( [ &bot ]( const dpp::socket_close_t &event ) {
-    LOG_DEBUG( "Socket closed: " + std::to_string( event.fd ) );
+    LOG_DEBUG( "Socket closed: " + std::to_string( event.from()->shard_id ) );
   } );
 
   // Bot ready event
