@@ -51,7 +51,6 @@ void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake
   } ).detach();
 }
 
-#ifdef VERBOSE_DEBUG
 void log_websocket_message( const std::string &raw_message ) {
   try {
     // Parse the JSON message
@@ -69,6 +68,7 @@ void log_websocket_message( const std::string &raw_message ) {
     // Log based on opcode
     switch ( opcode ) {
     case 1: // Heartbeat
+      LOG_DEBUG( "[Heartbeat] Sequence: " + std::to_string( data.get<int>() ) );
       break;
     case 2:                                        // Identify
       LOG_DEBUG( "[Identify] " + data.dump( 4 ) ); // Pretty-print JSON with indentation
@@ -91,7 +91,6 @@ void log_websocket_message( const std::string &raw_message ) {
     std::cerr << "[ERROR] Failed to parse WebSocket message: " << e.what() << std::endl;
   }
 }
-#endif 
 
 int main() {
   LOG_DEBUG( "Initializing signal handler" );
@@ -139,7 +138,6 @@ int main() {
     }
   }
 
-  #ifdef VERBOSE_DEBUG
   bot.on_log( [ &bot ]( const dpp::log_t &event ) {
     if ( event.severity == dpp::loglevel::ll_error ) {
       std::cerr << "Error: " << event.message << std::endl;
@@ -149,14 +147,10 @@ int main() {
       LOG_DEBUG( event.message );
     }
   } );
-  #endif
 
   bot.on_socket_close( [ &bot ]( const dpp::socket_close_t &event ) {
     if ( event.fd != 5 ) {
       LOG_DEBUG( "Socket closed: " + std::to_string( event.fd ) );
-    } if ( event.fd == 4 ) {
-      // reconnect
-      // bot.start( dpp::st_return );
     }
   } );
 

@@ -17,7 +17,7 @@ find_package(DPP REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system CONFIG)
 
 # Link the pre-installed DPP package to the main executable
-target_link_libraries(${PROJECT_NAME} ${DPP_LIBRARIES} Boost::system)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${DPP_LIBRARIES} Boost::system)
 
 # Include the DPP directories for the main executable
 target_include_directories(${PROJECT_NAME} PRIVATE ${DPP_INCLUDE_DIR})
