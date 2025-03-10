@@ -1,5 +1,6 @@
 #include "../main.hpp"
 #include "command.hpp"
+#include "commands_registry.hpp"
 
 class ReloadCommand : public Command {
 public:
@@ -14,7 +15,5 @@ public:
   dpp::permission get_permissions() const override { return dpp::p_administrator; }
 };
 
-// Export the function
-extern "C" {
-Command *create_reload_command() { return new ReloadCommand(); }
-}
+// Register the command using the macro
+REGISTER_COMMAND(ReloadCommand)

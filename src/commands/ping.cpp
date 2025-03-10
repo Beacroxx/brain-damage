@@ -1,5 +1,6 @@
 #include "../main.hpp"
 #include "command.hpp"
+#include "commands_registry.hpp"
 
 class PingCommand : public Command {
 public:
@@ -26,7 +27,5 @@ public:
   dpp::permission get_permissions() const override { return dpp::p_use_application_commands; }
 };
 
-// Export the function
-extern "C" {
-Command *create_ping_command() { return new PingCommand(); }
-}
+// Register the command using the macro
+REGISTER_COMMAND(PingCommand)

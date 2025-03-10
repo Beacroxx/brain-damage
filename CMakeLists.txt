@@ -27,33 +27,3 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
 )
-
-# Collect all .cpp files in the src/commands directory
-file(GLOB COMMAND_SOURCES "src/commands/*.cpp")
-
-# Iterate over each command source file
-foreach(COMMAND_SOURCE ${COMMAND_SOURCES})
-
-  # Extract the command name from the file name
-  get_filename_component(COMMAND_NAME ${COMMAND_SOURCE} NAME_WE)
-
-  # Create a shared library for the command
-  add_library(${COMMAND_NAME} SHARED ${COMMAND_SOURCE})
-
-  # Link the DPP libraries to the command library
-  target_link_libraries(${COMMAND_NAME} ${DPP_LIBRARIES} Boost::system)
-
-  # Include the DPP directories for the command library
-  target_include_directories(${COMMAND_NAME} PRIVATE ${DPP_INCLUDE_DIR})
-
-  # Set the output directory for the command library to ./build/commands
-  set_target_properties(${COMMAND_NAME} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/commands"
-  )
-
-  # Set C++ version for the command library
-  set_target_properties(${COMMAND_NAME} PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
-  )
-endforeach()
