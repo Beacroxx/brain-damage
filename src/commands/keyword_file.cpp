@@ -1,5 +1,6 @@
 #include "../main.hpp"
 #include "command.hpp"
+#include "commands_registry.hpp"
 
 using json = nlohmann::json;
 
@@ -39,8 +40,6 @@ public:
   dpp::permission get_permissions() const override { return dpp::p_use_application_commands; }
 };
 
-// Export the function
-extern "C" {
-Command *create_keyword_file_command() { return new KeywordFileCommand(); }
-}
+// Register the command using the macro
+REGISTER_COMMAND(KeywordFileCommand)
 

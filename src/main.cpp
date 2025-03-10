@@ -1,16 +1,15 @@
 #define VERBOSE_DEBUG
 
 #include "main.hpp"
-
-#include "events.hpp"
-
+#include "events/event.hpp"
+#include "events/events_registry.hpp"
 #include "commands/command.hpp"
+#include "commands/commands_registry.hpp"
 #include "starboard.hpp"
 
 #include <boost/asio.hpp>
 #include <concepts>
 #include <csignal>
-#include <dlfcn.h>
 #include <dpp/dpp.h>
 #include <filesystem>
 #include <fstream>
@@ -38,6 +37,23 @@ void signalHandler( int signal ) {
 
 void callAsThread( std::function<void()> func ) {
   std::thread( func ).detach();
+}
+
+// Log errors from DPP
+void logCallback( const dpp::confirmation_callback_t callback ) {
+  if ( callback.is_error() ) {
+    std::cerr << "Error: " << callback.get_error().human_readable << std::endl;
+  }
+}
+
+void deleteAfterAsync( custom_cluster &bot, dpp::snowflake msgid, dpp::snowflake channelid, int seconds ) {
+  LOG_DEBUG( "Scheduling message deletion in " + std::to_string( seconds ) + " seconds" );
+  std::thread( [&bot, msgid, channelid, seconds]() {
+    LOG_DEBUG( "Starting deleteAfterAsync thread" );
+    std::this_thread::sleep_for( std::chrono::seconds( seconds ) );
+    LOG_DEBUG( "Deleting message after " + std::to_string( seconds ) + " seconds" );
+    bot.message_delete( msgid, channelid, logCallback );
+  } ).detach();
 }
 
 void log_websocket_message( const std::string &raw_message ) {
@@ -86,7 +102,7 @@ int main() {
   std::signal( SIGINT, signalHandler );
 
   LOG_DEBUG( "Loading config" );
-  std::fstream cfg_fstream;
+  std::ifstream cfg_fstream;
   cfg_fstream.open( "../config.json", std::fstream::in );
   if ( !cfg_fstream.is_open() ) {
     std::cerr << "Failed to open config.json" << std::endl;
@@ -95,37 +111,19 @@ int main() {
   json config = json::parse( cfg_fstream );
   cfg_fstream.close();
 
-  LOG_DEBUG( "Initializing bot" );
   custom_cluster bot( config.at( "token" ), dpp::intents::i_all_intents );
   bot.load_config();
   bot.on_log( dpp::utility::cout_logger() );
 
   LOG_DEBUG( "Loading commands" );
-  std::vector<std::unique_ptr<Command>> commands;
-  // Iterate over all .so files in the commands/ directory
-  for ( const auto &file : fs::directory_iterator( "./commands/" ) ) {
-    if ( file.is_regular_file() && file.path().extension() == ".so" ) {
-      LOG_DEBUG( "Loading .so file: " + file.path().string() );
-      // Load the .so file
-      void *lib_handle = dlopen( file.path().c_str(), RTLD_LAZY );
-      if ( lib_handle ) {
-        typedef Command *( *create_command_func )();
-        // Assume the function name is "create_<cmd_name>_command"
-        std::string command_name = file.path().stem().string();
-        std::string func_name = "create_" + command_name + "_command";
-        func_name.erase( 7, 3 );
-        create_command_func create_command = (create_command_func)dlsym( lib_handle, func_name.c_str() );
-        if ( create_command ) {
-          commands.push_back( std::unique_ptr<Command>( create_command() ) );
-          LOG_DEBUG( "Loaded command: " + command_name );
-        } else {
-          std::cerr << "Error loading command from library: " << dlerror() << std::endl;
-        }
-      } else {
-        std::cerr << "Error opening library: " << dlerror() << std::endl;
-      }
-    }
-  }
+  // Get commands from the command registry
+  std::vector<std::unique_ptr<Command>> commands = CommandRegistry::instance().create_all_commands();
+  LOG_DEBUG( "Loaded " + std::to_string(commands.size()) + " commands" );
+
+  LOG_DEBUG( "Loading events" );
+  // Get events from the event registry
+  std::vector<std::unique_ptr<Event>> events = EventRegistry::instance().create_all_events();
+  LOG_DEBUG( "Loaded " + std::to_string(events.size()) + " events" );
 
   bot.on_log( [ &bot ]( const dpp::log_t &event ) {
     if ( event.severity == dpp::loglevel::ll_error ) {
@@ -137,13 +135,41 @@ int main() {
     }
   } );
 
-  // Bot ready event
-  bot.on_ready( [ &bot, &commands ]( const dpp::ready_t &event ) {
-    callAsThread( [ &bot, &commands, event ]() { ready( bot, event, commands ); } );
+  // Set up event handlers
+  bot.on_ready( [ &bot, &events ]( const dpp::ready_t &event ) {
+    for ( const auto &e : events ) {
+      if ( e->get_name() == "ready" ) {
+        callAsThread( [ &bot, &e, event ]() { e->execute( bot, event ); } );
+        break;
+      }
+    }
   } );
 
-  bot.on_message_create( [ &bot ]( const dpp::message_create_t &event ) {
-    callAsThread( [ &bot, event ]() { messageCreate( bot, event ); } );
+  bot.on_message_create( [ &bot, &events ]( const dpp::message_create_t &event ) {
+    for ( const auto &e : events ) {
+      if ( e->get_name() == "message_create" ) {
+        callAsThread( [ &bot, &e, event ]() { e->execute( bot, event ); } );
+        break;
+      }
+    }
+  } );
+
+  bot.on_message_reaction_add( [ &bot, &events ]( const dpp::message_reaction_add_t &event ) {
+    for ( const auto &e : events ) {
+      if ( e->get_name() == "reaction" ) {
+        callAsThread( [ &bot, &e, event ]() { e->execute( bot, event ); } );
+        break;
+      }
+    }
+  } );
+
+  bot.on_message_reaction_remove( [ &bot, &events ]( const dpp::message_reaction_remove_t &event ) {
+    for ( const auto &e : events ) {
+      if ( e->get_name() == "reaction" ) {
+        callAsThread( [ &bot, &e, event ]() { e->execute( bot, event ); } );
+        break;
+      }
+    }
   } );
 
   // Execute slash command if it's allowed in the channel
@@ -166,18 +192,6 @@ int main() {
         break;
       }
     }
-  } );
-
-  // Handle message reaction add
-  bot.on_message_reaction_add( [ &bot ]( const dpp::message_reaction_add_t &event ) {
-    LOG_DEBUG( "Message reaction add event triggered" );
-    callAsThread( [ &bot, event ]() { updateStarboardMessage( bot, event ); } );
-  } );
-
-  // Handle message reaction remove
-  bot.on_message_reaction_remove( [ &bot ]( const dpp::message_reaction_remove_t &event ) {
-    LOG_DEBUG( "Message reaction remove event triggered" );
-    callAsThread( [ &bot, event ]() { updateStarboardMessage( bot, event ); } );
   } );
 
   LOG_DEBUG( "Starting bot" );

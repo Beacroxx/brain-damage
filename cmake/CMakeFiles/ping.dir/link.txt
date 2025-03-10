@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC  -O3 -Wall -Wextra -Wpedantic -Wl,--dependency-file=CMakeFiles/ping.dir/link.d -shared -Wl,-soname,libping.so -o commands/ping/libping.so CMakeFiles/ping.dir/src/commands/ping/ping.cpp.o  /usr/lib/libdpp.so

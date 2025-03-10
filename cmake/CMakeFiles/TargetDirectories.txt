@@ -1,7 +1,0 @@
-/home/bea/dpp-bot/cmake/CMakeFiles/discord-bot.dir
-/home/bea/dpp-bot/cmake/CMakeFiles/keyword.dir
-/home/bea/dpp-bot/cmake/CMakeFiles/keyword_file.dir
-/home/bea/dpp-bot/cmake/CMakeFiles/ping.dir
-/home/bea/dpp-bot/cmake/CMakeFiles/reload.dir
-/home/bea/dpp-bot/cmake/CMakeFiles/edit_cache.dir
-/home/bea/dpp-bot/cmake/CMakeFiles/rebuild_cache.dir
