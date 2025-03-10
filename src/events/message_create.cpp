@@ -108,9 +108,12 @@ private:
       "--no-playlist "
       "--match-filter \"duration<=300\" "
       "--max-filesize 8M "
-      "-S res,ext:mp4:m4a "
       "--merge-output-format mp4 "
-      "--format \"bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b\" ";
+      // Format selection prioritizing h264 codec and compatible resolutions
+      "--format \"bv*[ext=mp4][vcodec^=avc1][height<=1080]+ba[ext=m4a]/b[ext=mp4][height<=1080]/bv*[height<=1080]+ba\" "
+      // Additional post-processing to ensure Discord compatibility
+      "--postprocessor-args \"-vcodec h264 -acodec aac -strict experimental -movflags +faststart\" "
+      "--no-progress ";
 
     // First simulate the download to check for issues
     std::string simcommand = "yt-dlp --simulate " + common_opts + 
@@ -119,9 +122,10 @@ private:
 
     std::array<char, 2048> buffer;
     std::string result;
+    int exit_status = 0;
     
     {
-      std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(simcommand.c_str(), "r"), pclose);
+      FILE* pipe = popen(simcommand.c_str(), "r");
       if (!pipe) {
         LOG_DEBUG("Failed to open pipe for yt-dlp simulation command");
         typing_indicator_running = false;
@@ -130,15 +134,29 @@ private:
         return;
       }
 
-      while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
+      try {
+        while (!feof(pipe)) {
+          if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+            result += buffer.data();
+          }
+        }
+        exit_status = pclose(pipe);
+      } catch (const std::exception& e) {
+        if (pipe) {
+          pclose(pipe);
+        }
+        LOG_DEBUG("Exception during simulation: " + std::string(e.what()));
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        event.reply("Failed to process video download request.", true);
+        return;
       }
     }
 
-    if (result.find("skipping") != std::string::npos || 
+    if (exit_status != 0 || result.find("skipping") != std::string::npos || 
         result.find("ERROR:") != std::string::npos ||
         result.empty()) {
-      LOG_DEBUG("Video validation failed: " + result);
+      LOG_DEBUG("Video validation failed: " + result + " (exit status: " + std::to_string(exit_status) + ")");
       typing_indicator_running = false;
       typing_indicator_thread.join();
       
@@ -164,10 +182,11 @@ private:
     // Proceed with actual download
     std::string download_cmd = "yt-dlp " + common_opts +
                               " -o \"" + output_template + "\" " +
-                              url;
+                              url + " 2>&1";
 
+    exit_status = 0;
     {
-      std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(download_cmd.c_str(), "r"), pclose);
+      FILE* pipe = popen(download_cmd.c_str(), "r");
       if (!pipe) {
         LOG_DEBUG("Failed to open pipe for yt-dlp download command");
         typing_indicator_running = false;
@@ -175,6 +194,32 @@ private:
         event.reply("Failed to download the video.", true);
         return;
       }
+
+      try {
+        // We don't need to read the output, but we need to wait for the process to finish
+        char tmp[1024];
+        while (fgets(tmp, sizeof(tmp), pipe) != nullptr) {
+          // Intentionally empty - just consuming output to prevent pipe from filling
+        }
+        exit_status = pclose(pipe);
+      } catch (const std::exception& e) {
+        if (pipe) {
+          pclose(pipe);
+        }
+        LOG_DEBUG("Exception during download: " + std::string(e.what()));
+        typing_indicator_running = false;
+        typing_indicator_thread.join();
+        event.reply("Failed to download the video.", true);
+        return;
+      }
+    }
+
+    if (exit_status != 0) {
+      LOG_DEBUG("Download failed with exit status: " + std::to_string(exit_status));
+      typing_indicator_running = false;
+      typing_indicator_thread.join();
+      event.reply("Failed to download the video.", true);
+      return;
     }
 
     // Find the downloaded file (should be mp4 but let's be thorough)
@@ -217,9 +262,11 @@ private:
 
     std::vector<char> file_buffer(length);
     if (file.read(file_buffer.data(), length)) {
-      std::string filename = fs::path(downloaded_file).filename().string();
+      std::string filename = "video.mp4"; // Force .mp4 extension for better Discord compatibility
       event.reply(
-        dpp::message().add_file(filename, std::string(file_buffer.begin(), file_buffer.end()), "video"),
+        dpp::message()
+          .add_file(filename, std::string(file_buffer.begin(), file_buffer.end()), "video/mp4") // Explicitly set MIME type
+          .set_content(""), // Empty content to prioritize embed
         true,
         [&bot, &event](const dpp::confirmation_callback_t &callback) {
           if (callback.is_error()) {
