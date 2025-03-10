@@ -31,6 +31,10 @@ public:
       scommands.push_back(scommand);
     }
 
+    // Rate limit the command creation
+    LOG_DEBUG("Waiting for 10 seconds before creating commands");
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+
     LOG_DEBUG("Creating all slash commands in the guild");
     // Create all slash commands in the guild
     bot.guild_bulk_command_create_sync(scommands, guild_id);
