@@ -1,4 +1,4 @@
-#define VERBOSE_DEBUG
+// #define VERBOSE_DEBUG
 
 #include "main.hpp"
 #include "events/event.hpp"
