@@ -24,6 +24,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${DPP_INCLUDE_DIR})
 
 # Set C++ version for the main executable
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
 )
