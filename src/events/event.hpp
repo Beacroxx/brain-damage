@@ -1,6 +1,7 @@
 #pragma once
-#include <dpp/dpp.h>
 #include "../main.hpp"
+
+#include <dpp/dpp.h>
 #include <string>
 
 #ifdef VERBOSE_DEBUG
@@ -13,5 +14,5 @@ class Event {
 public:
   virtual ~Event() = default;
   virtual std::string get_name() const = 0;
-  virtual void execute(custom_cluster &bot, const dpp::event_dispatch_t &event) = 0;
-}; 
+  virtual dpp::task<void> execute(custom_cluster &bot, const dpp::event_dispatch_t &event) = 0;
+};

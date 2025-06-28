@@ -1,6 +1,7 @@
 #pragma once
-#include <dpp/dpp.h>
 #include "../main.hpp"
+
+#include <dpp/dpp.h>
 #include <string>
 
 class Command {

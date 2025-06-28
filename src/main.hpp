@@ -10,12 +10,12 @@ public:
   using dpp::cluster::cluster; // Inherit constructors
 
   void load_config() {
-    std::ifstream cfg_ifstream( "../config.json" );
-    cfg = json::parse( cfg_ifstream );
+    std::ifstream cfg_ifstream("../config.json");
+    cfg = json::parse(cfg_ifstream);
   }
-  void save_config( json config ) {
-    std::ofstream cfg_ofstream( "../config.json", std::ofstream::out | std::ofstream::trunc );
-    cfg_ofstream << config.dump( 2 );
+  void save_config(json config) {
+    std::ofstream cfg_ofstream("../config.json", std::ofstream::out | std::ofstream::trunc);
+    cfg_ofstream << config.dump(2);
     cfg = config;
   }
   json get_config() { return cfg; }

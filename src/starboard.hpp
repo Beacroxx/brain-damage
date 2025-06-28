@@ -2,5 +2,4 @@
 
 #include "main.hpp"
 
-template <typename EventType>
-void updateStarboardMessage(custom_cluster &bot, const EventType &event);
+template <typename EventType> dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &event);

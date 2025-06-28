@@ -1,13 +1,12 @@
-#define VERBOSE_DEBUG
-
 #include "starboard.hpp"
+
+#include <algorithm>
 #include <chrono>
+#include <dpp/dpp.h>
 #include <iostream>
 #include <sstream>
 #include <thread>
 #include <vector>
-#include <algorithm>
-#include <dpp/dpp.h>
 
 #ifdef VERBOSE_DEBUG
 #define LOG_DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
@@ -15,8 +14,7 @@
 #define LOG_DEBUG(msg)
 #endif
 
-template <typename EventType>
-void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
+template <typename EventType> dpp::task<void> updateStarboardMessage(custom_cluster &bot, const EventType &event) {
   LOG_DEBUG("Attempting to lock starboard mutex");
   std::unique_lock<std::mutex> lock(bot.starboard_mutex, std::defer_lock);
 
@@ -34,11 +32,24 @@ void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
 
   LOG_DEBUG("Fetching message details");
   // Get the message, channel, and star count
-  const dpp::message msg = bot.message_get_sync(event.message_id, event.channel_id);
+  dpp::confirmation_callback_t message_result = co_await bot.co_message_get(event.message_id, event.channel_id);
+  if (message_result.is_error()) {
+    LOG_DEBUG("Failed to get message: " + message_result.get_error().human_readable);
+    co_return;
+  }
+  const dpp::message msg = message_result.get<dpp::message>();
+
   const auto starCountIt = std::find_if(msg.reactions.begin(), msg.reactions.end(),
                                         [](const dpp::reaction &r) { return r.emoji_name == "⭐"; });
   const int starCount = starCountIt != msg.reactions.end() ? starCountIt->count : 0;
-  const dpp::channel channel = bot.channel_get_sync(event.channel_id);
+
+  dpp::confirmation_callback_t channel_result = co_await bot.co_channel_get(event.channel_id);
+  if (channel_result.is_error()) {
+    LOG_DEBUG("Failed to get channel: " + channel_result.get_error().human_readable);
+    co_return;
+  }
+  const dpp::channel channel = channel_result.get<dpp::channel>();
+
   const long timestamp = msg.get_creation_time();
 
   // Check if the message is already in the starboard
@@ -56,7 +67,7 @@ void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
         bot.starboard_threads.erase(msg.get_url());
       }
     }
-    return;
+    co_return;
   }
 
   LOG_DEBUG("Creating embed message");
@@ -70,7 +81,10 @@ void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
   const dpp::message::message_ref reference = msg.message_reference;
   dpp::message ref;
   if (!reference.message_id.empty()) {
-    ref = bot.message_get_sync(reference.message_id, event.channel_id);
+    dpp::confirmation_callback_t ref_result = co_await bot.co_message_get(reference.message_id, event.channel_id);
+    if (!ref_result.is_error()) {
+      ref = ref_result.get<dpp::message>();
+    }
   }
 
   // Format the referenced message content
@@ -109,15 +123,30 @@ void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
     dpp::message &m = starboard[msg.get_url()];
     m.embeds.at(0) = e;
     m.set_content("⭐ **" + std::to_string(starCount) + "** | [`# " + channel.name + "`](<" + msg.get_url() + ">)");
-    m = bot.message_edit_sync(m);
+
+    dpp::confirmation_callback_t edit_result = co_await bot.co_message_edit(m);
+    if (!edit_result.is_error()) {
+      m = edit_result.get<dpp::message>();
+    }
   } else if (starCount == 2 && std::is_same_v<EventType, dpp::message_reaction_add_t>) {
     LOG_DEBUG("Posting message to starboard channel");
     // Post in starboard channel
-    const dpp::channel starboard_channel = bot.channel_get_sync(bot.get_config().at("starboardChannel").get<dpp::snowflake>());
-    starboard[msg.get_url()] = bot.message_create_sync(dpp::message("⭐ **" + std::to_string(starCount) + "** | [`# " +
-    channel.name + "`](<" + msg.get_url() + ">)")
-    .add_embed(e)
-    .set_channel_id(starboard_channel.id));
+    dpp::confirmation_callback_t starboard_channel_result =
+        co_await bot.co_channel_get(bot.get_config().at("starboardChannel").get<dpp::snowflake>());
+    if (starboard_channel_result.is_error()) {
+      LOG_DEBUG("Failed to get starboard channel: " + starboard_channel_result.get_error().human_readable);
+      co_return;
+    }
+    const dpp::channel starboard_channel = starboard_channel_result.get<dpp::channel>();
+
+    dpp::confirmation_callback_t create_result = co_await bot.co_message_create(
+        dpp::message("⭐ **" + std::to_string(starCount) + "** | [`# " + channel.name + "`](<" + msg.get_url() + ">)")
+            .add_embed(e)
+            .set_channel_id(starboard_channel.id));
+
+    if (!create_result.is_error()) {
+      starboard[msg.get_url()] = create_result.get<dpp::message>();
+    }
 
     // Remove the message from ram after 3 days ( thread magic )
     std::string url = msg.get_url();
@@ -135,7 +164,7 @@ void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
       }
       auto &starboard = botPtr->starboard;
       if (starboard.find(url) != starboard.end() &&
-           botPtr->starboard_threads.find(url) != botPtr->starboard_threads.end()) {
+          botPtr->starboard_threads.find(url) != botPtr->starboard_threads.end()) {
         starboard.erase(url);
       }
       botPtr->starboard_threads.erase(url);
@@ -149,5 +178,8 @@ void updateStarboardMessage(custom_cluster &bot, const EventType &event) {
 }
 
 // Explicit template instantiation
-template void updateStarboardMessage<dpp::message_reaction_add_t>(custom_cluster &bot, const dpp::message_reaction_add_t &event);
-template void updateStarboardMessage<dpp::message_reaction_remove_t>(custom_cluster &bot, const dpp::message_reaction_remove_t &event);
+template dpp::task<void> updateStarboardMessage<dpp::message_reaction_add_t>(custom_cluster &bot,
+                                                                             const dpp::message_reaction_add_t &event);
+template dpp::task<void>
+updateStarboardMessage<dpp::message_reaction_remove_t>(custom_cluster &bot,
+                                                       const dpp::message_reaction_remove_t &event);

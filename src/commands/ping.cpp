@@ -11,7 +11,9 @@ public:
     const long timestamp = event.command.get_creation_time() * 1000; // Convert to milliseconds
 
     // Calculate the latency from timestamp to now
-    const long now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    const long now =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     const long latency = now - timestamp;
 
     // Reply with "Pong! Latency: <latency>ms"
